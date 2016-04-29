@@ -1,13 +1,13 @@
 #include "pse.h"
 
-#define CMD   "client"
+#define CMD   "[Client]"
 
 int main(int argc, char *argv[]) {
 	int sock, ret;
 	struct sockaddr_in *address;
 	int charEcris;
 	char buff[LIGNE_MAX];
-
+	
 	if (argc != 3) {
 		erreur("usage: %s machine port\n", argv[0]);
 	}
@@ -46,8 +46,13 @@ int main(int argc, char *argv[]) {
 			charEcris = ecrireLigne(sock, buff);
 			if (charEcris==-1)
 				erreur_IO("Ecriture ligne");
-			if (strcmp(buff, "fin\n") == 0){
-				printf("[Client] : Arret demande\n");
+			if (strcmp(buff, "exit\n") == 0){
+				printf("[Client] : Deconnection demande\n");
+				break;
+			}
+			else if( strcmp(buff,"fin\n")==0 )
+			{
+				printf("[Client] : Arret du serveur demande\n");
 				break;
 			}
 			else{
