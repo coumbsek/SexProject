@@ -1,11 +1,6 @@
 #include "pse.h"
 #include<pthread.h> 
-
-typedef struct InfoThread{
-	int logFile;
-	int sock;
-	int thread_id;
-}InfoThread;
+#include "InfoThread.h"
 
 //the thread function
 void *connexionHandler(void *);
@@ -16,10 +11,10 @@ int main(int argc , char *argv[])
 	int ecoute , client_sock , c;
 	struct sockaddr_in server , client;
 	int log;
-
+	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
-
+	
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -27,12 +22,12 @@ int main(int argc , char *argv[])
 		erreur_IO("Could not create socket");
 	}
 	puts("Socket created");
-
+	
 	//Prepare the sockaddr_in structure
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
 	server.sin_port = htons( atoi(argv[1]) );
-
+	
 	//Bind
 	if( bind(ecoute,(struct sockaddr *)&server , sizeof(server)) < 0)
 	{
@@ -41,20 +36,15 @@ int main(int argc , char *argv[])
 		return 1;
 	}
 	puts("bind done");
-
+	
 	log = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
 	if (log == -1) {
 		erreur_IO("open log");
 	}
-
+	
 	//Listen
 	listen(ecoute , 3);
-
-	//Accept and incoming connection
-	puts("Waiting for incoming connections...");
-	c = sizeof(struct sockaddr_in);
-
-
+	
 	//Accept and incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
@@ -67,27 +57,27 @@ int main(int argc , char *argv[])
 		threadData.logFile = log;
 		threadData.sock = client_sock;
 		threadData.thread_id = thread_id;
-
+		
 		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
 			perror("could not create thread");
 			return 1;
 		}
-	 
+	 	
 		//Now join the thread , so that we dont terminate before the thread
 		//pthread_join( thread_id , NULL);
 		puts("Handler assigned");
 	}
-
+	
 	if (client_sock < 0)
 	{
 		perror("accept failed");
 		return 1;
 	}
-
+	
 	return 0;
 }
- 
+
 void *connexionHandler(void *tDatas)
 {
 	//Get the socket descriptor
@@ -96,19 +86,16 @@ void *connexionHandler(void *tDatas)
 	InfoThread threadData = *(InfoThread *) tDatas;
 	int log = threadData.logFile;
 	int sock = threadData.sock;
-
+	
 	int readSize, writeSize;
 	char *message , buff[LIGNE_MAX];
 	char *flagStop = malloc(sizeof(char));
 	//Send some messages to the client
-	message = "Greetings! I am your connection handler\n";
+	message = "[Server] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
-
-	message = "Now type something and i shall repeat what you type \n";
-	write(sock , message , strlen(message));
-
+	//ecrireLigne(sock, message);
 	//Receive a message from client
-	while( 1)
+	while(1)
 	{
 		readSize = lireLigne(sock , buff);//rcv
 		if (readSize <=0 || readSize == LIGNE_MAX) {
@@ -139,7 +126,7 @@ void *connexionHandler(void *tDatas)
 		//clear the message buffer
 		memset(buff, 0, LIGNE_MAX);
 	}
-
+	
 	if(readSize == 0)
 	{
 		erreur_IO("Client disconnected");
@@ -149,7 +136,7 @@ void *connexionHandler(void *tDatas)
 	{
 		perror("lireLigne failed");
 	}
-	 
+	
 	pthread_exit(flagStop);
 }
 
