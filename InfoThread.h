@@ -1,6 +1,16 @@
+#ifndef INFO_THREAD_H
+#define INFO_THREAD_H
+#include "LockableFile.h"
+
 typedef struct InfoThread{
 	char isServer;
-	union{
+	FileL logFile;
+	FileL datasFile;
+	int sock;
+	int thread_id;
+	char isFree;
+
+	/*union{
 		struct{
 			int logFile;
 			int sock;
@@ -16,5 +26,6 @@ typedef struct InfoThread{
 			char isFree;
 			int connexionPort;
 		}InfoThreadS;
-	};
+	};*/
 }InfoThread;
+#endif
