@@ -2,7 +2,7 @@
 #
 include ../Makefile.inc
 
-EXE = client tcpServer
+EXE = client tcpServer annuaire
 
 all: ${EXE}
 

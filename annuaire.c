@@ -2,25 +2,27 @@
 #include<pthread.h> 
 #include "InfoThread.h"
 
-#define ADDR_ANNUAIRE "localhost"
-#define PORT_ANNUAIRE "8080"
+#define NBCLIENTS 3
+#define NBSERVERS 2
 
 //the thread function
 void *connexionHandler(void *);
+void connexionHandlerClient(void *);
+void connexionHandlerServer(void *);
 int rAzLog(int fd); 
-void ini();
+
+InfoThread cohorteClient[NBCLIENTS];
+InfoThread cohorteServer[NBSERVERS];
 
 int main(int argc , char *argv[])
 {
 	int ecoute , client_sock , c;
-	struct sockaddr_in server , client;
+	struct sockaddr_in annuaire, client;
 	int log;
 	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
 	
-	ini();
-/*
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -30,12 +32,12 @@ int main(int argc , char *argv[])
 	puts("Socket created");
 	
 	//Prepare the sockaddr_in structure
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port = htons( atoi(argv[1]) );
+	annuaire.sin_family = AF_INET;
+	annuaire.sin_addr.s_addr = INADDR_ANY;
+	annuaire.sin_port = htons( atoi(argv[1]) );
 	
 	//Bind
-	if( bind(ecoute,(struct sockaddr *)&server , sizeof(server)) < 0)
+	if( bind(ecoute,(struct sockaddr *)&annuaire , sizeof(annuaire)) < 0)
 	{
 		//print the error message
 		perror("bind failed. Error");
@@ -63,7 +65,7 @@ int main(int argc , char *argv[])
 		threadData.InfoThreadC.logFile = log;
 		threadData.InfoThreadC.sock = client_sock;
 		threadData.InfoThreadC.thread_id = thread_id;
-		
+		threadData.isServer = 0;	
 		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
 			perror("could not create thread");
@@ -80,11 +82,36 @@ int main(int argc , char *argv[])
 		perror("accept failed");
 		return 1;
 	}
-	//*/
+	
 	return 0;
 }
-//*
-void *connexionHandler(void *tDatas)
+
+void *connexionHandler(void *tDatas){
+	InfoThread threadData = *(InfoThread *) tDatas;
+	if (threadData.isServer = 0)
+		connexionHandlerClient(tDatas);
+	else if (threadData.isServer = 1)
+		connexionHandlerServer(tDatas);
+	else{
+		erreur("Type de thread non reconnu\n");
+	}
+}
+
+void connexionHandlerServer(void *tDatas){
+	InfoThread threadData = *(InfoThread *) tDatas;
+	int log = threadData.InfoThreadS.logFile;
+	int sock = threadData.InfoThreadS.sock;
+
+	int readSize;
+	char buff[LIGNE_MAX];
+	while(1){
+		readSize = lireLigne(sock, buff);
+		if (readSize!=0)
+			printf("%d byte reads : <%s>\n",readSize, buff);
+	}
+}
+
+void connexionHandlerClient(void *tDatas)
 {
 	//Get the socket descriptor
 	//int sock = *(int*)ecoute;
@@ -97,7 +124,7 @@ void *connexionHandler(void *tDatas)
 	char *message , buff[LIGNE_MAX];
 	char *flagStop = malloc(sizeof(char));
 	//Send some messages to the client
-	message = "[Server] : Hello! I'm your connection handler\n";
+	message = "[annuaire] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
 	//ecrireLigne(sock, message);
 	//Receive a message from client
@@ -145,7 +172,7 @@ void *connexionHandler(void *tDatas)
 	
 	pthread_exit(flagStop);
 }
-//*/
+
 int rAzLog(int fd) {
 	int newFd;
 	if (close(fd) == -1)
@@ -154,36 +181,4 @@ int rAzLog(int fd) {
 	if (newFd == -1)
 		erreur_IO("open trunc log");
 	return newFd;
-}
-
-void ini(){
-	int sock, ret;
-	struct sockaddr_in *address;
-	char buff[LIGNE_MAX];
-	pthread_t thread_annuaire;
-	int writeSize;
-
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-
-	printf("Connection to annuaire : %s, port %s\n", ADDR_ANNUAIRE,PORT_ANNUAIRE);
-	address = resolv(ADDR_ANNUAIRE,PORT_ANNUAIRE);
-	if (address == NULL)
-		erreur("address %s port %s unknow\n",ADDR_ANNUAIRE,PORT_ANNUAIRE);
-	printf("Successfully resolved  %s, port %hu\n",
-			stringIP(ntohl(address->sin_addr.s_addr)),
-			ntohs(address->sin_port));
-	/*Connexion a l'annuaire*/
-	printf("Connecting the socket\n");
-	ret = connect(sock, (struct sockaddr *) address, sizeof(struct sockaddr_in));
-	if (ret < 0)
-		erreur_IO("Socket connection\n");
-	printf("resolv success\n");
-	freeResolv();
-/*
-	strcpy(buff, ADDR_ANNUAIRE);
-	writeSize = ecrireLigne(sock, buff);
-	if (writeSize == -1)
-		erreur_IO("Writing address line");*/
-	return;
-
 }
