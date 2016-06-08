@@ -1,20 +1,20 @@
 #include "pse.h"
-#include<pthread.h> 
+#include <pthread.h> 
 #include "InfoThread.h"
+#include "constantes.h"
 
-#define ADDR_ANNUAIRE "localhost"
-#define PORT_ANNUAIRE "8080"
+void 	*connexionHandler(void *);
+int 	rAzLog(int fd); 
+void 	*connexionHandlerAnnuaire(void *port);
 
-//the thread function
-void *connexionHandler(void *);
-int rAzLog(int fd); 
-void *connexionHandlerAnnuaire(void *port);
-
-int main(int argc , char *argv[])
+int	main(int argc , char *argv[])
 {
-	int ecoute , client_sock , c;
-	struct sockaddr_in server , client;
-	int log;
+	int	ecoute, 
+		client_sock, 
+		c;
+	struct	sockaddr_in	server, 
+			  	client;
+	int 	log;
 	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
@@ -28,8 +28,7 @@ int main(int argc , char *argv[])
 	}
  	pthread_join( threadAnnuaire , NULL);
 
-	//ini((short)atoi(argv[1]));
-/*
+//*
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -93,22 +92,21 @@ int main(int argc , char *argv[])
 	return 0;
 }
 //*
-void *connexionHandler(void *tDatas)
+void	*connexionHandler(void *tDatas)
 {
 	//Get the socket descriptor
 	//int sock = *(int*)ecoute;
 	
-	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.InfoThreadC.logFile;
-	int sock = threadData.InfoThreadC.sock;
+	InfoThread 	threadData = *(InfoThread *) tDatas;
+	int 	log = threadData.InfoThreadC.logFile;
+	int 	sock = threadData.InfoThreadC.sock;
 	
-	int readSize, writeSize;
-	char *message , buff[LIGNE_MAX];
-	char *flagStop = malloc(sizeof(char));
+	int 	readSize, writeSize;
+	char 	*message , buff[LIGNE_MAX];
+	char 	*flagStop = malloc(sizeof(char));
 	//Send some messages to the client
 	message = "[Server] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
-	//ecrireLigne(sock, message);
 	//Receive a message from client
 	while(1)
 	{
@@ -155,7 +153,7 @@ void *connexionHandler(void *tDatas)
 	pthread_exit(flagStop);
 }
 //*/
-int rAzLog(int fd) {
+int	rAzLog(int fd) {
 	int newFd;
 	if (close(fd) == -1)
 		erreur_IO("close log");
@@ -165,14 +163,16 @@ int rAzLog(int fd) {
 	return newFd;
 }
 
-void *connexionHandlerAnnuaire(void *port){
-	char isRunning = 1;
-	int sock, ret;
-	char pingValue = 1;
-	struct sockaddr_in *address;
-	char buff[LIGNE_MAX];
-	pthread_t thread_annuaire;
-	int writeSize;
+void	*connexionHandlerAnnuaire(void *port){
+	char		isRunning = 1;
+	int 		sock, 
+			ret;
+	char 		pingValue = 1;
+	struct 		sockaddr_in *address;
+	char 		buff[LIGNE_MAX];
+	pthread_t 	thread_annuaire;
+	int 		writeSize;
+	int 		identifier;
 
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -191,11 +191,17 @@ void *connexionHandlerAnnuaire(void *port){
 	printf("resolv success\n");
 	freeResolv();
 //*
+	//Envoie de l'identifiant à l'annuaire
+	identifier = ID_SERVER;
+	writeSize = send(sock, (const void *) &identifier, sizeof(identifier));
+	if (writeSize == -1)
+		erreur_IO("Writing address line");//*/
+	//Envoie du port de connexion client à l'annuaire
 	writeSize = send(sock, (const void *) port, sizeof(short),0);
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
 	printf("sending address line\nwriting %d bits\n",writeSize);
-	
+	//Pining each second to allow annnuaire be sure server is still up
 	while(isRunning == 1){
 		printf("ping value : %d", pingValue);
 		send(sock, (const void *) &pingValue, sizeof(pingValue),0);
