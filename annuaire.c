@@ -3,8 +3,7 @@
 #include "InfoThread.h"
 #include "LockableFile.h"
 #include <sys/time.h>
-#define NBCLIENTS 3
-#define NBSERVERS 2
+#include "constantes.h"
 
 //the thread function
 void *connexionHandler(void *);
@@ -113,9 +112,9 @@ void *connexionHandler(void *tDatas){
                perror("select()");
 	else if (retval){
 		readSize = recv(sock, &identifier, sizeof(int),0);
-		if (identifier == 254)//0X00FE
+		if (identifier == ID_SERVER)//0X00FE
 			threadData.isServer = 1;
-		else if (identifier == 65280)//0XFF00
+		else if (identifier == ID_CLIENT)//0XFF00
 			threadData.isServer = 0;
 	}
 	else
