@@ -1,6 +1,7 @@
 #include "pse.h"
 #include <pthread.h> 
 #include "InfoThread.h"
+#include "LockableFile.h"
 #include <sys/time.h>
 #define NBCLIENTS 3
 #define NBSERVERS 2
@@ -18,7 +19,7 @@ int main(int argc , char *argv[])
 {
 	int ecoute , client_sock , c;
 	struct sockaddr_in annuaire, client;
-	int log, datasServers;
+	FileL log, datasServers;
 	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
@@ -45,20 +46,20 @@ int main(int argc , char *argv[])
 	}
 	puts("bind done");
 	
-	log = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
-	if (log == -1) {
+	log.fd = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
+	if (log.fd == -1) {
 		erreur_IO("open log");
 	}
 
-	datasServers = open("servers.datas", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
-	if (datasServers == -1) {
+	datasServers.fd = open("servers.datas", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
+	if (datasServers.fd == -1) {
 		erreur_IO("open datas Servers");
 	}
 	
 	//Listen
 	listen(ecoute , 3);
 	
-	//Accept and incoming connection
+	//Accept an incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
 	pthread_t thread_id;
@@ -67,11 +68,12 @@ int main(int argc , char *argv[])
 		puts("Connection accepted");
 	 	
 		InfoThread threadData = {0};
-		threadData.InfoThreadS.logFile = log;
-		threadData.InfoThreadS.datasServers = datasServers;
-		threadData.InfoThreadS.sock = client_sock;
-		threadData.InfoThreadS.thread_id = thread_id;
-		threadData.isServer = 1;	
+		threadData.logFile.fd = log.fd;
+		threadData.datasFile.fd = datasServers.fd;
+		threadData.sock = client_sock;
+		threadData.thread_id = thread_id;
+		threadData.isServer = 1;
+
 		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
 			perror("could not create thread");
@@ -93,7 +95,32 @@ int main(int argc , char *argv[])
 }
 
 void *connexionHandler(void *tDatas){
+	fd_set rfds;
+	struct timeval tv = {5,0};
+	int retval;
+	int readSize;
+
+	int identifier;
+	
 	InfoThread threadData = *(InfoThread *) tDatas;
+	int sock = threadData.sock;
+	
+	FD_ZERO(&rfds);
+	FD_SET(sock, &rfds);
+
+	retval = select(sock+1, &rfds, NULL, NULL, &tv);
+	if (retval == -1)
+               perror("select()");
+	else if (retval){
+		readSize = recv(sock, &identifier, sizeof(int),0);
+		if (identifier == 254)//0X00FE
+			threadData.isServer = 1;
+		else if (identifier == 65280)//0XFF00
+			threadData.isServer = 0;
+	}
+	else
+		printf("No data within five seconds.\n");
+
 	if (threadData.isServer == 0)
 		connexionHandlerClient(tDatas);
 	else if (threadData.isServer == 1)
@@ -109,8 +136,9 @@ void connexionHandlerServer(void *tDatas){
 	int retval;
 
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.InfoThreadS.logFile;
-	int sock = threadData.InfoThreadS.sock;
+	int log = threadData.logFile.fd;
+	int datasFile = threadData.datasFile.fd;
+	int sock = threadData.sock;
 
 	int readSize;
 	short *port = malloc(sizeof(short));
@@ -140,19 +168,22 @@ void connexionHandlerServer(void *tDatas){
 				erreur_IO("lireLigne");
 			else if (readSize==0)
 				continue;
-			else
-				printf("[Annuaire] : reception %d octets : \"%d\"\n", readSize, pingValue);
+			else{
+				//Traitement des données recues si necessaire mais ici on ne recoit que des pings normalement
+			}
 		}
-		else
+		else{
 			printf("No data within five seconds : Tiemout.\n");
+			pthread_exit(NULL);
+		}
 	}
 }
 
 void connexionHandlerClient(void *tDatas)
 {
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.InfoThreadC.logFile;
-	int sock = threadData.InfoThreadC.sock;
+	int log = threadData.logFile.fd;
+	int sock = threadData.sock;
 	
 	int readSize, writeSize;
 	char *message , buff[LIGNE_MAX];
