@@ -180,7 +180,7 @@ void ini(){
 	printf("resolv success\n");
 	freeResolv();
 //*
-	strcpy(buff, ADDR_ANNUAIRE);
+	strcpy(buff, stringIP(ntohl(address->sin_addr.s_addr)));
 	writeSize = ecrireLigne(sock, buff);
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
