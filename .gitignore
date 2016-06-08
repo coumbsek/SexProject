@@ -1,3 +1,6 @@
 *.log
 client
 tcpServer
+annuaire
+.*
+
