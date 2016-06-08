@@ -179,11 +179,13 @@ void ini(){
 		erreur_IO("Socket connection\n");
 	printf("resolv success\n");
 	freeResolv();
-/*
+//*
 	strcpy(buff, ADDR_ANNUAIRE);
 	writeSize = ecrireLigne(sock, buff);
 	if (writeSize == -1)
-		erreur_IO("Writing address line");*/
+		erreur_IO("Writing address line");//*/
+	printf("sending address line\n");
+	//while(1);
 	return;
 
 }

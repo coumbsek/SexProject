@@ -65,7 +65,7 @@ int main(int argc , char *argv[])
 		threadData.InfoThreadC.logFile = log;
 		threadData.InfoThreadC.sock = client_sock;
 		threadData.InfoThreadC.thread_id = thread_id;
-		threadData.isServer = 0;	
+		threadData.isServer = 1;	
 		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
 			perror("could not create thread");
@@ -88,9 +88,9 @@ int main(int argc , char *argv[])
 
 void *connexionHandler(void *tDatas){
 	InfoThread threadData = *(InfoThread *) tDatas;
-	if (threadData.isServer = 0)
+	if (threadData.isServer == 0)
 		connexionHandlerClient(tDatas);
-	else if (threadData.isServer = 1)
+	else if (threadData.isServer == 1)
 		connexionHandlerServer(tDatas);
 	else{
 		erreur("Type de thread non reconnu\n");
@@ -99,15 +99,21 @@ void *connexionHandler(void *tDatas){
 
 void connexionHandlerServer(void *tDatas){
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.InfoThreadS.logFile;
-	int sock = threadData.InfoThreadS.sock;
+	int log = threadData.InfoThreadC.logFile;
+	int sock = threadData.InfoThreadC.sock;
 
 	int readSize;
 	char buff[LIGNE_MAX];
 	while(1){
-		readSize = lireLigne(sock, buff);
-		if (readSize!=0)
-			printf("%d byte reads : <%s>\n",readSize, buff);
+		readSize = lireLigne(sock , buff);//rcv
+		if (readSize <=0 || readSize == LIGNE_MAX) {
+			erreur_IO("error : lireLigne");
+		}
+		else if (readSize==0)
+			continue;
+		else{
+			printf("[Annuaire] : reception %d octets : \"%s\"\n", readSize, buff);
+		}
 	}
 }
 
