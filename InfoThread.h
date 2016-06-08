@@ -10,6 +10,7 @@ typedef struct InfoThread{
 
 		struct{
 			int logFile;
+			short datasServers;
 			int sock;
 			int thread_id;
 			char isFree;
