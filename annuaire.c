@@ -1,7 +1,7 @@
 #include "pse.h"
-#include<pthread.h> 
+#include <pthread.h> 
 #include "InfoThread.h"
-
+#include <sys/time.h>
 #define NBCLIENTS 3
 #define NBSERVERS 2
 
@@ -105,7 +105,7 @@ void *connexionHandler(void *tDatas){
 
 void connexionHandlerServer(void *tDatas){
 	fd_set rfds;
-	struct timevals = {1,0};
+	struct timeval tv = {5,0};
 	int retval;
 
 	InfoThread threadData = *(InfoThread *) tDatas;
@@ -123,30 +123,33 @@ void connexionHandlerServer(void *tDatas){
 	if (retval == -1)
                perror("select()");
 	else if (retval){
-		printf("Data is available now.\n");
-		readyySize = recv(sock, port, sizeof(short),0);
+		readSize = recv(sock, port, sizeof(short),0);
 	}
 	else
 		printf("No data within five seconds.\n");
 
 	while(1){
-		readyySize = recv(sock, &pingValue, sizeof(char),0);
-		if (readSize <=0 || readSize == LIGNE_MAX) {
-			erreur_IO("lireLigne");
+		retval = select(sock+1, &rfds, NULL, NULL, &tv);
+		if (retval == -1)
+		       perror("select()");
+		else if (retval){
+			tv.tv_usec = 0;
+			tv.tv_sec = 5;
+			readSize = recv(sock, &pingValue, sizeof(char),0);
+			if (readSize <=0 || readSize == LIGNE_MAX)
+				erreur_IO("lireLigne");
+			else if (readSize==0)
+				continue;
+			else
+				printf("[Annuaire] : reception %d octets : \"%d\"\n", readSize, pingValue);
 		}
-		else if (readSize==0)
-			continue;
-		else{
-			printf("[Annuaire] : reception %d octets : \"%d\"\n", readSize, *port);
-		}
+		else
+			printf("No data within five seconds : Tiemout.\n");
 	}
 }
 
 void connexionHandlerClient(void *tDatas)
 {
-	//Get the socket descriptor
-	//int sock = *(int*)ecoute;
-	
 	InfoThread threadData = *(InfoThread *) tDatas;
 	int log = threadData.InfoThreadC.logFile;
 	int sock = threadData.InfoThreadC.sock;
@@ -154,10 +157,9 @@ void connexionHandlerClient(void *tDatas)
 	int readSize, writeSize;
 	char *message , buff[LIGNE_MAX];
 	char *flagStop = malloc(sizeof(char));
-	//Send some messages to the client
+	//sending message to client
 	message = "[annuaire] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
-	//ecrireLigne(sock, message);
 	//Receive a message from client
 	while(1)
 	{
