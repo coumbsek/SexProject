@@ -18,7 +18,7 @@ int main(int argc , char *argv[])
 {
 	int ecoute , client_sock , c;
 	struct sockaddr_in annuaire, client;
-	int log;
+	int log, datasServers;
 	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
@@ -49,6 +49,11 @@ int main(int argc , char *argv[])
 	if (log == -1) {
 		erreur_IO("open log");
 	}
+
+	datasServers = open("servers.datas", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
+	if (datasServers == -1) {
+		erreur_IO("open datas Servers");
+	}
 	
 	//Listen
 	listen(ecoute , 3);
@@ -62,9 +67,10 @@ int main(int argc , char *argv[])
 		puts("Connection accepted");
 	 	
 		InfoThread threadData = {0};
-		threadData.InfoThreadC.logFile = log;
-		threadData.InfoThreadC.sock = client_sock;
-		threadData.InfoThreadC.thread_id = thread_id;
+		threadData.InfoThreadS.logFile = log;
+		threadData.InfoThreadS.datasServers = datasServers;
+		threadData.InfoThreadS.sock = client_sock;
+		threadData.InfoThreadS.thread_id = thread_id;
 		threadData.isServer = 1;	
 		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
@@ -98,23 +104,40 @@ void *connexionHandler(void *tDatas){
 }
 
 void connexionHandlerServer(void *tDatas){
+	fd_set rfds;
+	struct timevals = {1,0};
+	int retval;
+
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.InfoThreadC.logFile;
-	int sock = threadData.InfoThreadC.sock;
+	int log = threadData.InfoThreadS.logFile;
+	int sock = threadData.InfoThreadS.sock;
 
 	int readSize;
-	char buff[LIGNE_MAX];
-	struct sockaddr_in *addressServer = malloc(sizeof(struct sockaddr_in));
+	short *port = malloc(sizeof(short));
+	char pingValue = 1;
+
+	FD_ZERO(&rfds);
+	FD_SET(sock, &rfds);
+
+	retval = select(sock+1, &rfds, NULL, NULL, &tv);
+	if (retval == -1)
+               perror("select()");
+	else if (retval){
+		printf("Data is available now.\n");
+		readyySize = recv(sock, port, sizeof(short),0);
+	}
+	else
+		printf("No data within five seconds.\n");
+
 	while(1){
-		//readSize = lireLigne(sock , buff);//rcv
-		readSize = recv(sock, addressServer, sizeof(struct sockaddr_in),0);
+		readyySize = recv(sock, &pingValue, sizeof(char),0);
 		if (readSize <=0 || readSize == LIGNE_MAX) {
 			erreur_IO("lireLigne");
 		}
 		else if (readSize==0)
 			continue;
 		else{
-			printf("[Annuaire] : reception %d octets : \"%s\"\n", readSize, buff);
+			printf("[Annuaire] : reception %d octets : \"%d\"\n", readSize, *port);
 		}
 	}
 }

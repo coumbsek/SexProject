@@ -8,7 +8,7 @@
 //the thread function
 void *connexionHandler(void *);
 int rAzLog(int fd); 
-void ini();
+void *connexionHandlerAnnuaire(void *port);
 
 int main(int argc , char *argv[])
 {
@@ -19,7 +19,16 @@ int main(int argc , char *argv[])
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
 	
-	ini();
+	pthread_t threadAnnuaire;
+	c = atoi(argv[1]);
+	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &c) < 0)//client_sock
+	{
+		perror("could not create thread");
+		return 1;
+	}
+ 	pthread_join( threadAnnuaire , NULL);
+
+	//ini((short)atoi(argv[1]));
 /*
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
@@ -156,8 +165,10 @@ int rAzLog(int fd) {
 	return newFd;
 }
 
-void ini(){
+void *connexionHandlerAnnuaire(void *port){
+	char isRunning = 1;
 	int sock, ret;
+	char pingValue = 1;
 	struct sockaddr_in *address;
 	char buff[LIGNE_MAX];
 	pthread_t thread_annuaire;
@@ -180,12 +191,16 @@ void ini(){
 	printf("resolv success\n");
 	freeResolv();
 //*
-	//strcpy(buff, stringIP(ntohl(address->sin_addr.s_addr)));
-	writeSize = send(sock, (const void *) address, sizeof(struct sockaddr_in),0);//ecrireLigne(sock, buff);
+	writeSize = send(sock, (const void *) port, sizeof(short),0);
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
-	printf("sending address line\n");
-	//while(1);
+	printf("sending address line\nwriting %d bits\n",writeSize);
+	
+	while(isRunning == 1){
+		printf("ping value : %d", pingValue);
+		send(sock, (const void *) &pingValue, sizeof(pingValue),0);
+		sleep(1);
+	}
 	return;
 
 }
