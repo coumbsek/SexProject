@@ -40,8 +40,8 @@ int main(int argc, char *argv[]) {
 	freeResolv();
 	
 	InfoThread threadData = {0};
-	threadData.sock = sock;
-	threadData.thread_id = thread_id;
+	threadData.InfoThreadC.sock = sock;
+	threadData.InfoThreadC.thread_id = thread_id;
 
 	if (pthread_create(&thread_id, NULL, connexionListener, (void*) &threadData) < 0){
 		perror("[Client] : could not create Listener");
@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
 
 void *connexionListener(void *tDatas){
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.logFile;
-	int sock = threadData.sock;
+	int log = threadData.InfoThreadC.logFile;
+	int sock = threadData.InfoThreadC.sock;
 	
 	int readSize;
 	char *message , buff[LIGNE_MAX];
