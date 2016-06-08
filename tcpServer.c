@@ -180,8 +180,8 @@ void ini(){
 	printf("resolv success\n");
 	freeResolv();
 //*
-	strcpy(buff, stringIP(ntohl(address->sin_addr.s_addr)));
-	writeSize = ecrireLigne(sock, buff);
+	//strcpy(buff, stringIP(ntohl(address->sin_addr.s_addr)));
+	writeSize = send(sock, (const void *) address, sizeof(struct sockaddr_in),0);//ecrireLigne(sock, buff);
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
 	printf("sending address line\n");

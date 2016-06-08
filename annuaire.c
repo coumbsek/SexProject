@@ -104,10 +104,12 @@ void connexionHandlerServer(void *tDatas){
 
 	int readSize;
 	char buff[LIGNE_MAX];
+	struct sockaddr_in *addressServer = malloc(sizeof(struct sockaddr_in));
 	while(1){
-		readSize = lireLigne(sock , buff);//rcv
+		//readSize = lireLigne(sock , buff);//rcv
+		readSize = recv(sock, addressServer, sizeof(struct sockaddr_in),0);
 		if (readSize <=0 || readSize == LIGNE_MAX) {
-			erreur_IO("error : lireLigne");
+			erreur_IO("lireLigne");
 		}
 		else if (readSize==0)
 			continue;
