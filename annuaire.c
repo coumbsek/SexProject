@@ -112,10 +112,13 @@ void *connexionHandler(void *tDatas){
                perror("select()");
 	else if (retval){
 		readSize = recv(sock, &identifier, sizeof(int),0);
-		if (identifier == ID_SERVER)//0X00FE
+		if (identifier == ID_SERVER){//0X00F0
 			threadData.isServer = 1;
-		else if (identifier == ID_CLIENT)//0XFF00
+			printf("Server joined\n");
+		}
+		else if (identifier == ID_CLIENT){//0X0F00
 			threadData.isServer = 0;
+		}
 	}
 	else
 		printf("No data within five seconds.\n");
