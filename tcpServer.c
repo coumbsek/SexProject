@@ -14,7 +14,7 @@ int	main(int argc , char *argv[])
 		c;
 	struct	sockaddr_in	server, 
 			  	client;
-	int 	log;
+	FileL 	log;
 	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
@@ -51,8 +51,8 @@ int	main(int argc , char *argv[])
 	}
 	puts("bind done");
 	
-	log = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
-	if (log == -1) {
+	log.fd = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
+	if (log.fd == -1) {
 		erreur_IO("open log");
 	}
 	
@@ -68,9 +68,9 @@ int	main(int argc , char *argv[])
 		puts("Connection accepted");
 	 	
 		InfoThread threadData = {0};
-		threadData.InfoThreadC.logFile = log;
-		threadData.InfoThreadC.sock = client_sock;
-		threadData.InfoThreadC.thread_id = thread_id;
+		threadData.logFile.fd = log.fd;
+		threadData.sock = client_sock;
+		threadData.thread_id = thread_id;
 		
 		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
@@ -98,8 +98,8 @@ void	*connexionHandler(void *tDatas)
 	//int sock = *(int*)ecoute;
 	
 	InfoThread 	threadData = *(InfoThread *) tDatas;
-	int 	log = threadData.InfoThreadC.logFile;
-	int 	sock = threadData.InfoThreadC.sock;
+	int 	log = threadData.logFile.fd;
+	int 	sock = threadData.sock;
 	
 	int 	readSize, writeSize;
 	char 	*message , buff[LIGNE_MAX];
@@ -193,7 +193,7 @@ void	*connexionHandlerAnnuaire(void *port){
 //*
 	//Envoie de l'identifiant à l'annuaire
 	identifier = ID_SERVER;
-	writeSize = send(sock, (const void *) &identifier, sizeof(identifier));
+	writeSize = send(sock, (const void *) &identifier, sizeof(identifier), 0);
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
 	//Envoie du port de connexion client à l'annuaire
@@ -208,5 +208,4 @@ void	*connexionHandlerAnnuaire(void *port){
 		sleep(1);
 	}
 	return;
-
 }
