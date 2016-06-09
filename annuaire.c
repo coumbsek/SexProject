@@ -6,19 +6,23 @@
 #include "constantes.h"
 
 //the thread function
-void *connexionHandler(void *);
-void connexionHandlerClient(void *);
-void connexionHandlerServer(void *);
-int rAzLog(int fd); 
+void	*connexionHandler(void *);
+void	connexionHandlerClient(void *);
+void	connexionHandlerServer(void *);
+int	rAzLog(int fd); 
 
 InfoThread cohorteClient[NBCLIENTS];
 InfoThread cohorteServer[NBSERVERS];
 
-int main(int argc , char *argv[])
+int	main(int argc , char *argv[])
 {
-	int ecoute , client_sock , c;
-	struct sockaddr_in annuaire, client;
-	FileL log, datasServers;
+	int 	ecoute, 
+		client_sock, 
+		c;
+	struct sockaddr_in annuaire, 
+			   client;
+	FileL	log, 
+		datasServers;
 	
 	if (argc < 2)
 		erreur("usage: %s port\n", argv[0]);
@@ -93,13 +97,13 @@ int main(int argc , char *argv[])
 	return 0;
 }
 
-void *connexionHandler(void *tDatas){
-	fd_set rfds;
-	struct timeval tv = {5,0};
-	int retval;
-	int readSize;
+void	*connexionHandler(void *tDatas){
+	fd_set 	rfds;
+	struct 	timeval tv = {5,0};
+	int 	retval;
+	int 	readSize;
 
-	int identifier;
+	int 	identifier;
 	
 	InfoThread threadData = *(InfoThread *) tDatas;
 	int sock = threadData.sock;
@@ -132,19 +136,19 @@ void *connexionHandler(void *tDatas){
 	}
 }
 
-void connexionHandlerServer(void *tDatas){
-	fd_set rfds;
-	struct timeval tv = {5,0};
-	int retval;
+void	connexionHandlerServer(void *tDatas){
+	fd_set 	rfds;
+	struct	timeval tv = {5,0};
+	int	retval;
 
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.logFile.fd;
-	int datasFile = threadData.datasFile.fd;
-	int sock = threadData.sock;
+	int	log = threadData.logFile.fd;
+	int	datasFile = threadData.datasFile.fd;
+	int	sock = threadData.sock;
 
-	int readSize;
-	short *port = malloc(sizeof(short));
-	char pingValue = 1;
+	int	readSize;
+	short	*port = malloc(sizeof(short));
+	char	pingValue = 1;
 
 	FD_ZERO(&rfds);
 	FD_SET(sock, &rfds);
@@ -181,15 +185,15 @@ void connexionHandlerServer(void *tDatas){
 	}
 }
 
-void connexionHandlerClient(void *tDatas)
+void	connexionHandlerClient(void *tDatas)
 {
 	InfoThread threadData = *(InfoThread *) tDatas;
-	int log = threadData.logFile.fd;
-	int sock = threadData.sock;
+	int	log = threadData.logFile.fd;
+	int	sock = threadData.sock;
 	
-	int readSize, writeSize;
-	char *message , buff[LIGNE_MAX];
-	char *flagStop = malloc(sizeof(char));
+	int	readSize, writeSize;
+	char	*message , buff[LIGNE_MAX];
+	char	*flagStop = malloc(sizeof(char));
 	//sending message to client
 	message = "[annuaire] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
@@ -239,7 +243,7 @@ void connexionHandlerClient(void *tDatas)
 	pthread_exit(flagStop);
 }
 
-int rAzLog(int fd) {
+int	rAzLog(int fd) {
 	int newFd;
 	if (close(fd) == -1)
 		erreur_IO("close log");
