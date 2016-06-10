@@ -19,7 +19,7 @@ int	main(int argc , char *argv[])
 	int 	ecoute, 
 		client_sock, 
 		c;
-	struct sockaddr_in annuaire, 
+	struct	sockaddr_in annuaire, 
 			   client;
 	FileL	log, 
 		datasServers;
@@ -53,11 +53,13 @@ int	main(int argc , char *argv[])
 	if (log.fd == -1) {
 		erreur_IO("open log");
 	}
+	log.mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
 	datasServers.fd = open("servers.datas", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
 	if (datasServers.fd == -1) {
 		erreur_IO("open datas Servers");
 	}
+	datasServers.mutex =(pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 	
 	//Listen
 	listen(ecoute , 3);
@@ -161,6 +163,12 @@ void	connexionHandlerServer(void *tDatas){
 	}
 	else
 		printf("No data within five seconds.\n");
+
+	pthread_mutex_lock(&(threadData.datasFile.mutex));
+
+	//write adresse et port to datasFile
+	write(threadData.datasFile.fd, port, sizeof(short));	
+	pthread_mutex_unlock(&(threadData.datasFile.mutex));
 
 	while(1){
 		retval = select(sock+1, &rfds, NULL, NULL, &tv);
