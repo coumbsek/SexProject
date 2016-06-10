@@ -10,12 +10,13 @@ void	*connexionHandler(void *);
 void	connexionHandlerClient(void *);
 void	connexionHandlerServer(void *);
 int	rAzLog(int fd); 
-
-InfoThread cohorteClient[NBCLIENTS];
-InfoThread cohorteServer[NBSERVERS];
+void	iniCohorte(InfoThread *cohorte, int size);
 
 int	main(int argc , char *argv[])
 {
+	InfoThread *cohorteClient = malloc(sizeof(InfoThread)*NBCLIENTS);
+	InfoThread *cohorteServer = malloc(sizeof(InfoThread)*NBSERVERS);
+
 	int 	ecoute, 
 		client_sock, 
 		c;
@@ -35,6 +36,10 @@ int	main(int argc , char *argv[])
 	}
 	puts("Socket created");
 	
+	//Initialisation des cohortes de thread worker
+	iniCohorte(cohorteClient, NBCLIENTS);
+	iniCohorte(cohorteServer, NBSERVERS);
+
 	//Prepare the sockaddr_in structure
 	annuaire.sin_family = AF_INET;
 	annuaire.sin_addr.s_addr = INADDR_ANY;
@@ -77,16 +82,16 @@ int	main(int argc , char *argv[])
 		threadData.datasFile.fd = datasServers.fd;
 		threadData.sock = client_sock;
 		threadData.thread_id = thread_id;
-		threadData.isServer = 1;
+		threadData.isServer = -1;
 
-		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
+		if( pthread_create( &(threadData.thread_id) , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
 		{
 			perror("could not create thread");
 			return 1;
 		}
 	 	
 		//Now join the thread , so that we dont terminate before the thread
-		//pthread_join( thread_id , NULL);
+		pthread_join( thread_id , NULL);
 		puts("Handler assigned");
 	}
 	
@@ -99,6 +104,19 @@ int	main(int argc , char *argv[])
 	return 0;
 }
 
+void	iniCohorte(InfoThread *cohorte, int size){
+	int	i = 0;
+
+	for (i = 0; i < size; i++){
+		cohorte[i].isFree = 1;
+		cohorte[i].isServer = -1;
+		if (pthread_create(&(cohorte[i].thread_id), NULL, connexionHandler, (void*) &(cohorte[i])) < 0){
+			perror("[Client] : could not create Listener");
+			return 1;
+		}
+	}
+}
+
 void	*connexionHandler(void *tDatas){
 	fd_set 	rfds;
 	struct 	timeval tv = {5,0};
@@ -107,8 +125,8 @@ void	*connexionHandler(void *tDatas){
 
 	int 	identifier;
 	
-	InfoThread threadData = *(InfoThread *) tDatas;
-	int sock = threadData.sock;
+	InfoThread *threadData = (InfoThread *) tDatas;
+	int sock = threadData->sock;
 	
 	FD_ZERO(&rfds);
 	FD_SET(sock, &rfds);
@@ -119,19 +137,23 @@ void	*connexionHandler(void *tDatas){
 	else if (retval){
 		readSize = recv(sock, &identifier, sizeof(int),0);
 		if (identifier == ID_SERVER){//0X00F0
-			threadData.isServer = 1;
+			threadData->isServer = 1;
 			printf("Server joined\n");
 		}
 		else if (identifier == ID_CLIENT){//0X0F00
-			threadData.isServer = 0;
+			threadData->isServer = 0;
+			printf("Client joined\n");
 		}
 	}
-	else
+	else{
 		printf("No data within five seconds.\n");
+		threadData->isFree = 1;
+		pthread_exit(NULL);
+	}
 
-	if (threadData.isServer == 0)
+	if (threadData->isServer == 0)
 		connexionHandlerClient(tDatas);
-	else if (threadData.isServer == 1)
+	else if (threadData->isServer == 1)
 		connexionHandlerServer(tDatas);
 	else{
 		erreur("Type de thread non reconnu\n");
@@ -207,7 +229,7 @@ void	connexionHandlerClient(void *tDatas)
 	write(sock , message , strlen(message));
 	//Receive a message from client
 	while(1)
-	{
+	{//*
 		readSize = lireLigne(sock , buff);//rcv
 		if (readSize <=0 || readSize == LIGNE_MAX) {
 			erreur_IO("lireLigne");
@@ -235,7 +257,7 @@ void	connexionHandlerClient(void *tDatas)
 		}
 		//write(sock , buff , strlen(buff));
 		//clear the message buffer
-		memset(buff, 0, LIGNE_MAX);
+		memset(buff, 0, LIGNE_MAX);//*/
 	}
 	
 	if(readSize == 0)

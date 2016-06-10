@@ -21,14 +21,13 @@ int	main(int argc , char *argv[])
 	
 	pthread_t threadAnnuaire;
 	c = atoi(argv[1]);
-	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &c) < 0)//client_sock
+	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &c) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
- 	pthread_join( threadAnnuaire , NULL);
 
-//*
+/*
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -79,7 +78,7 @@ int	main(int argc , char *argv[])
 		}
 	 	
 		//Now join the thread , so that we dont terminate before the thread
-		//pthread_join( thread_id , NULL);
+		pthread_join( thread_id , NULL);
 		puts("Handler assigned");
 	}
 	
@@ -89,6 +88,8 @@ int	main(int argc , char *argv[])
 		return 1;
 	}
 	//*/
+	
+ 	pthread_join( threadAnnuaire , NULL);
 	return 0;
 }
 //*
@@ -203,7 +204,7 @@ void	*connexionHandlerAnnuaire(void *port){
 	printf("sending address line\nwriting %d bits\n",writeSize);
 	//Pining each second to allow annnuaire be sure server is still up
 	while(isRunning == 1){
-		printf("ping value : %d", pingValue);
+		//printf("%s Ping value : %d\n", SERVER_ANNUAIRE, pingValue);
 		send(sock, (const void *) &pingValue, sizeof(pingValue),0);
 		sleep(1);
 	}
