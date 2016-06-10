@@ -17,6 +17,10 @@ int	main(int argc , char *argv[])
 	InfoThread *cohorteClient = malloc(sizeof(InfoThread)*NBCLIENTS);
 	InfoThread *cohorteServer = malloc(sizeof(InfoThread)*NBSERVERS);
 
+	int	isServer = -1,
+		readSize,
+		identifier,
+		j;
 	int 	ecoute, 
 		client_sock, 
 		c;
@@ -67,31 +71,64 @@ int	main(int argc , char *argv[])
 	datasServers.mutex =(pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 	
 	//Listen
-	listen(ecoute , 3);
+	listen(ecoute , NBCLIENTS + NBSERVERS);
 	
 	//Accept an incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
-	pthread_t thread_id;
+	//pthread_t thread_id;
 	while( (client_sock = accept(ecoute, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
+		
 		puts("Connection accepted");
-	 	
+	 	/*
 		InfoThread threadData = {0};
 		threadData.logFile.fd = log.fd;
 		threadData.datasFile.fd = datasServers.fd;
 		threadData.sock = client_sock;
 		threadData.thread_id = thread_id;
 		threadData.isServer = -1;
+		//*/
+		readSize = recv(client_sock, &identifier, sizeof(int),0);
+		printf("before if\n");
+		if (identifier == ID_SERVER){//0X00F0
+			isServer = 1;
+			printf("before for\n");
+			for(j = 0; j < NBSERVERS; j++){
+				printf("in for %d\n",j);
+				if (cohorteServer[j].isFree==1)
+					break;
+			}
+			cohorteServer[j].isServer = 1;
+			cohorteServer[j].isFree = 0;
+			printf("Server joined\n");/*
+			if( pthread_create( &(cohorteServer[j].thread_id) , NULL ,  connexionHandlerServer , (void*) &(cohorteServer[j]) < 0))//client_sock
+			{
+				perror("could not create thread");
+				return 1;
+			}*/
 
-		if( pthread_create( &(threadData.thread_id) , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
-		{
-			perror("could not create thread");
-			return 1;
 		}
-	 	
+		else if (identifier == ID_CLIENT){//0X0F00
+			isServer = 0;
+			for(j = 0; j < NBCLIENTS; j++){
+				if (cohorteClient[j].isFree==1)
+					break;
+			}
+			cohorteClient[j].isServer = 0;
+			cohorteClient[j].isFree = 0;
+			printf("Client joined\n");/*
+			if( pthread_create( &(cohorteClient[j].thread_id) , NULL ,  connexionHandlerClient , (void*) &(cohorteClient[j]) < 0))//client_sock
+			{
+				perror("could not create thread");
+				return 1;
+			}*/
+
+		}
+
+			 	
 		//Now join the thread , so that we dont terminate before the thread
-		pthread_join( thread_id , NULL);
+		//pthread_join( thread_id , NULL);
 		puts("Handler assigned");
 	}
 	
@@ -128,35 +165,39 @@ void	*connexionHandler(void *tDatas){
 	InfoThread *threadData = (InfoThread *) tDatas;
 	int sock = threadData->sock;
 	
-	FD_ZERO(&rfds);
-	FD_SET(sock, &rfds);
+	while(1){
+		if (threadData->isFree == 0){/*
+			FD_ZERO(&rfds);
+			FD_SET(sock, &rfds);
 
-	retval = select(sock+1, &rfds, NULL, NULL, &tv);
-	if (retval == -1)
-               perror("select()");
-	else if (retval){
-		readSize = recv(sock, &identifier, sizeof(int),0);
-		if (identifier == ID_SERVER){//0X00F0
-			threadData->isServer = 1;
-			printf("Server joined\n");
+			retval = select(sock+1, &rfds, NULL, NULL, &tv);
+			if (retval == -1)
+			       perror("select()");
+			else if (retval){
+				readSize = recv(sock, &identifier, sizeof(int),0);
+				if (identifier == ID_SERVER){//0X00F0
+					threadData->isServer = 1;
+					printf("Server joined\n");
+				}
+				else if (identifier == ID_CLIENT){//0X0F00
+					threadData->isServer = 0;
+					printf("Client joined\n");
+				}
+			}
+			else{
+				printf("No data within five seconds.\n");
+				threadData->isFree = 1;
+				pthread_exit(NULL);
+			}
+*/
+			if (threadData->isServer == 0)
+				connexionHandlerClient(tDatas);
+			else if (threadData->isServer == 1)
+				connexionHandlerServer(tDatas);
+			else{
+				erreur("Type de thread non reconnu\n");
+			}
 		}
-		else if (identifier == ID_CLIENT){//0X0F00
-			threadData->isServer = 0;
-			printf("Client joined\n");
-		}
-	}
-	else{
-		printf("No data within five seconds.\n");
-		threadData->isFree = 1;
-		pthread_exit(NULL);
-	}
-
-	if (threadData->isServer == 0)
-		connexionHandlerClient(tDatas);
-	else if (threadData->isServer == 1)
-		connexionHandlerServer(tDatas);
-	else{
-		erreur("Type de thread non reconnu\n");
 	}
 }
 
