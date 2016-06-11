@@ -9,7 +9,7 @@ typedef struct InfoThread{
 	int sock;
 	int thread_id;
 	char isFree;
-
+	pthread_mutex_t mutex;	
 	/*union{
 		struct{
 			int logFile;
