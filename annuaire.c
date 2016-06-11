@@ -73,6 +73,7 @@ int	main(int argc , char *argv[])
 		cohorteServer[j].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 		cohorteServer[j].isServer = 1;
 		cohorteServer[j].isFree = 1;
+		cohorteServer[j].ip = malloc(sizeof(char)*16);
 	}
 
 	//Accept an incoming connection
@@ -108,6 +109,9 @@ int	main(int argc , char *argv[])
 					printf("Affectation Server Thread %p = %d\n",&(cohorteServer[j]),cohorteServer[j].isFree);
 					cohorteServer[j].logFile.fd = log.fd;
 					cohorteServer[j].datasFile.fd = datasServers.fd;
+					cohorteServer[j].sock = client_sock;
+					printf("Adresse du serveur %s\n",stringIP(ntohl(annuaire.sin_addr.s_addr)));
+					strcpy(cohorteServer[j].ip,stringIP(ntohl(annuaire.sin_addr.s_addr)));
 				pthread_mutex_unlock(&(cohorteServer[j].mutex));
 				if (pthread_create(&(cohorteServer[j].thread_id), NULL, connexionHandlerServer, &j) < 0){
 					perror("could not create thread server");
@@ -193,7 +197,10 @@ void	connexionHandlerServer(void *tDatas){
 	pthread_mutex_lock(&(threadData.datasFile.mutex));
 
 	//write adresse et port to datasFile
-	write(threadData.datasFile.fd, port, sizeof(short));	
+	write(threadData.datasFile.fd, threadData.ip, sizeof(threadData.ip));
+	write(threadData.datasFile.fd, " ", sizeof(char));
+	write(threadData.datasFile.fd, port, sizeof(short));
+	write(threadData.datasFile.fd, '\n', sizeof(char));
 	pthread_mutex_unlock(&(threadData.datasFile.mutex));
 
 	while(1){
