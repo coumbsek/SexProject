@@ -4,26 +4,52 @@
 #include "constantes.h"
 
 void *connexionListener(void *tDatas);
-void *connexionHandlerAnnuaire(void *c);
+void *connexionHandlerAnnuaire(void *p);
 
 int main(int argc, char *argv[]) {
-	int	sock, 
-		ret;
+	int	sock,ret,i;
 	struct	sockaddr_in *address;
 	int 	writeSize;
-	char 	buff[LIGNE_MAX];
+	char 	*buff,*teste;
 	pthread_t thread_id;
 
-	if (argc != 3) {
+	if (argc != 3){
 		erreur("usage: %s machine port\n", argv[0]);
 	}
 	
+	// on lance la connexion annuaire-client
 	pthread_t threadAnnuaire;
-	if (pthread_create(&threadAnnuaire, NULL, connexionHandlerAnnuaire, (void *) &ret)<0){
+	if (pthread_create(&threadAnnuaire, NULL, connexionHandlerAnnuaire,NULL)!=0){
 		perror("could not create thread");
 		return 1;
 	}
-/*	
+
+	// on récupère l'adresse choisi par le client  
+	if(pthread_join(threadAnnuaire,(void**)&buff)!=0)
+	{
+		perror("join"); 
+		exit(1);
+	}
+
+	printf("Connexion à : %s \n", (char *) buff);
+
+	printf("1\n");
+
+	teste=(char *)buff; 	
+	
+	i=0;
+	while(teste[i]!=' ')
+	{
+		i=i+1;
+	}
+	printf("1\n");
+	
+	//on récupère l'adresse IP
+	strncpy(argv[1],teste,i);
+	
+	//on récupère le port
+	strncpy(argv[2],teste+i+1,4);
+	
 	printf("%s: creating a socket\n", CMD);
 	sock = socket (AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
@@ -81,11 +107,10 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	*/
+	//*/
 	while(1){
 
 	}
-	pthread_join(&threadAnnuaire, NULL);	
 	exit(EXIT_SUCCESS);
 }
 
@@ -93,11 +118,15 @@ void *connexionHandlerAnnuaire(void *p){
 	int		sock,
 			ret;
 	struct 		sockaddr_in *address;
-	char		buff[LIGNE_MAX];
+	static char	buff[LIGNE_MAX];
 	pthread_t	thread_annuaire;
 	int		readSize,
 			writeSize;
 	int		identifier;
+	// variable ajoutée 
+	 int i,ligne;
+	 i=1;
+	 ligne=0;
 	
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -121,6 +150,73 @@ void *connexionHandlerAnnuaire(void *p){
 	writeSize = send(sock, (const void *) &identifier, sizeof(identifier), 0);
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
+
+//modification de Nabil
+
+	// on recoit le texte envoyé par l'annuaire
+	ret = lireLigne(sock, buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
+	}	  
+	printf("%s \n", buff);
+	
+	ret = lireLigne(sock, buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
+	}	  
+	printf("%s \n", buff);
+
+	//on recoit le nombre de ligne
+	ret = lireLigne(sock,buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
+	}
+
+	//on converti le char* en int
+	ligne = atoi(buff);
+
+	// on recoit la liste des serveurs connectés
+	for(i=0;i<ligne;i++)
+	{
+		printf("%d - ",i+1);
+
+		//on envoie la ligne coresspondante
+		ret = lireLigne(sock, buff); 
+		if (ret <=0 || ret == LIGNE_MAX) {
+			erreur_IO("lireLigne");
+		}		  
+		printf("%s \n", buff);
+
+	}
+
+	// on envoie à l'annuaire le choix du serveur
+	printf("Votre choix : ");
+	if (fgets(buff, LIGNE_MAX, stdin) == NULL) {
+		erreur("fgets");
+	}
+	  
+	ret = ecrireLigne(sock, buff);
+	if (ret == -1) {
+		erreur_IO("ecrireLigne");
+	}
+
+
+	// on récupère le serveur choisi
+	ret = lireLigne(sock, buff);
+	if (ret == -1) {
+		erreur_IO("ecrireLigne");
+	}
+
+	printf("%s \n", buff);
+	shutdown(sock,2);
+	if (close(sock) == -1) {
+		erreur_IO("close socket");
+	}	
+	
+	pthread_exit(buff);
+
+
+//fin de modification
 	
 }
 

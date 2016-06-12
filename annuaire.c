@@ -74,6 +74,12 @@ int	main(int argc , char *argv[])
 		cohorteServer[j].isFree = 1;
 		cohorteServer[j].ip = malloc(sizeof(char)*17);
 	}
+	for (j = 0; j<NBCLIENTS;j++){
+		cohorteClient[j].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+		cohorteClient[j].isServer = 0;
+		cohorteClient[j].isFree = 1;
+		cohorteClient[j].ip = malloc(sizeof(char)*17);
+	}
 
 	//Accept an incoming connection
 	//puts("Waiting for incoming connections...");
@@ -130,7 +136,23 @@ int	main(int argc , char *argv[])
 					if (cohorteClient[j].isFree==1)
 						break;
 				}
-				cohorteClient[j].isFree = 0;
+				if (j == NBCLIENTS){
+					shutdown(ecoute, 2);
+					close(ecoute);
+					continue;
+				}
+				pthread_mutex_lock(&(cohorteClient[j].mutex));
+					printf("Affectation Client Thread %p = %d\n",&(cohorteClient[j]),cohorteClient[j].isFree);
+					cohorteClient[j].logFile.fd = log.fd;
+					printf("Addresse du client %s\n",stringIP(ntohl(client.sin_addr.s_addr)));
+					strcpy(cohorteClient[j].ip,stringIP(ntohl(client.sin_addr.s_addr)));
+					cohorteClient[j].sock = client_sock;
+				pthread_mutex_unlock(&(cohorteClient[j].mutex));
+				
+				if (pthread_create(&(cohorteClient[j].thread_id), NULL, connexionHandlerClient, &j) < 0){
+					perror("could not create thread server");
+				}
+
 				printf("Client joined\n");
 			}
 		}
@@ -147,29 +169,6 @@ int	main(int argc , char *argv[])
 	
 	return 0;
 }
-/*
-void	*connexionHandler(void *tDatas){
-	
-	int 	retval;
-	int 	readSize;
-
-	//int 	identifier = *(int *)tDatas;
-	int j = 
-	InfoThread *threadData = (InfoThread *) tDatas;//&(cohorteServer[identifier]);
-	int sock = threadData->sock;
-	//printf("Thread Identifier <%d>\n", identifier);
-	//printf("ConnexionHandler <%p>\n", &(threadData));
-
-	pthread_mutex_lock(&(threadData->mutex));
-	if (threadData->isServer == 0)
-		connexionHandlerClient(tDatas);
-	else if (threadData->isServer == 1)
-		connexionHandlerServer(tDatas);
-	else{
-		erreur("Type de thread non reconnu\n");
-	}
-	pthread_mutex_unlock(&(threadData->mutex));
-}*/
 
 void	connexionHandlerServer(void *tDatas){
 	printf("Je suis un server!!!\n");
@@ -203,7 +202,13 @@ void	connexionHandlerServer(void *tDatas){
 	//write adresse et port to datasFile
 		char str[8];
 		sprintf(str, "%d", *port);
-		write(threadData.datasFile.fd, threadData.ip, sizeof(char)*16);
+		for (j = 0; j < 17; j++){
+			if (!((threadData.ip[j] >= '0' && threadData.ip[j] <='9') || threadData.ip[j] == '.')){
+				break;
+			}
+		}
+		threadData.ip[j] = '\0';
+		write(threadData.datasFile.fd, threadData.ip, sizeof(char)*j);
 		write(threadData.datasFile.fd, " ", sizeof(char));
 		write(threadData.datasFile.fd, str, 4*sizeof(char));
 		write(threadData.datasFile.fd, "\n", sizeof(char));
@@ -235,58 +240,100 @@ void	connexionHandlerServer(void *tDatas){
 
 void	connexionHandlerClient(void *tDatas)
 {
-	InfoThread threadData = *(InfoThread *) tDatas;
+	printf("Je suis un client!\n");
+	int j = *(int *) tDatas;
+	InfoThread threadData = cohorteClient[j];
 	int	log = threadData.logFile.fd;
 	int	sock = threadData.sock;
 	
 	int	readSize, writeSize;
-	char	*message , buff[LIGNE_MAX];
+	char	*message, buff[LIGNE_MAX];
 	char	*flagStop = malloc(sizeof(char));
-	//sending message to client
+
+// modification de Nabil
+	// variable ajoutée 
+	int i,ligne,ret;
+	i=1;
+	ligne=0;
+	FILE *fi;
+	fi=fopen("servers.datas","r"); //fichié ou sont logé les connexions serveur
+
+	//Demmande au client de se connecter
+
 	message = "[annuaire] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
-	//Receive a message from client
-	while(1)
-	{//*
-		readSize = lireLigne(sock , buff);//rcv
-		if (readSize <=0 || readSize == LIGNE_MAX) {
-			erreur_IO("lireLigne");
-		}
-		else if (readSize==0)
-			continue;
-		else{
-			printf("[Serveur] : reception %d octets : \"%s\"\n", readSize, buff);
-			writeSize = ecrireLigne(log,buff);
-			if(writeSize !=-1)
-				printf("[Serveur] : ecriture de %d octets\n", writeSize);
-		}
-		if (strcmp(buff,"fin\n")==0){
-			printf("[Serveur] : Arret en cours\n");
-			*flagStop = 1;
-			break;
-		}
-		else if(strcmp(buff, "exit\n")==0){
-			printf("[Serveur] : Client disconnection\n");
-			break;
-		}
-		else if (strcmp(buff, "init\n")==0){
-			printf("[Serveur] : Remise a zero journal\n");
-			rAzLog(log);
-		}
-		//write(sock , buff , strlen(buff));
-		//clear the message buffer
-		memset(buff, 0, LIGNE_MAX);//*/
+	//printf("%s",message);
+  	
+	message="[annuaire] : Vous voulez vous connecter à quel serveur ?\n";
+	write(sock , message , strlen(message));
+	//printf("%s",message);
+
+	// on compte le nombre de ligne dans le fichier
+	while(fgets(buff,LIGNE_MAX,fi)!=NULL)
+	{
+		ligne++;
 	}
+
+	//convertit ligne en char* et l'envoie
+	sprintf(buff, "%d", ligne);
+
+	ret = ecrireLigne(sock, buff);
+	if (ret == -1) {
+		erreur_IO("ecrireLigne");
+	}
+
+	//on envoie la listes des serveurs connecté
+	fseek(fi,0,SEEK_SET); //on se remet au début du fichier
+	for(i=0;i<ligne;i++)
+	{
 	
-	if(readSize == 0)
-	{
-		erreur_IO("Client disconnected");
-		fflush(stdout);
+//		sprintf(buff,"%d -",i); //envoie le numéro de ligne
+//		ret = ecrireLigne(sock, buff);
+		
+		printf("%d - ",i+1);
+
+		// envoie la ligne corespondante
+		if (fgets(buff, LIGNE_MAX,fi) == NULL) {
+			erreur("fgets");
+		}
+		ret = ecrireLigne(sock, buff);
+		if (ret == -1) {
+			erreur_IO("ecrireLigne");
+		}
+		printf("%s",buff);
 	}
-	else if(readSize == -1)
-	{
-		perror("lireLigne failed");
+
+	//on recoit le numéro de serveur choisi
+	ret = lireLigne(sock,buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
 	}
+
+	//on converti le char* en int
+	ligne = atoi(buff);
+
+	fseek(fi,0,SEEK_SET); //on se remet au début du fichier
+
+	//on envoie l'adresse choisie
+	for(i=0;i<ligne;i++)
+	{
+	
+		// envoie la ligne corespondante
+		if (fgets(buff, LIGNE_MAX,fi) == NULL) {
+			erreur("fgets");
+		}
+	}
+
+	ret = ecrireLigne(sock, buff);
+	if (ret == -1) {
+		erreur_IO("ecrireLigne");
+	}
+
+	printf("Le client a choisi le serveur : %s \n",buff);
+	
+	fclose(fi);
+
+// fin des modifications
 	
 	pthread_exit(flagStop);
 }
