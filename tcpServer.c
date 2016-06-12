@@ -17,8 +17,8 @@ int	main(int argc , char *argv[])
 			  	client;
 	FileL 	log;
 	
-	if (argc < 2)
-		erreur("usage: %s port\n", argv[0]);
+	if (argc < 3)
+		erreur("usage: %s port file\n", argv[0]);
 	
 	pthread_t threadAnnuaire;
 	port = atoi(argv[1]);
@@ -187,28 +187,36 @@ void	*connexionHandlerAnnuaire(void *port){
 			ntohs(address->sin_port));
 	/*Connexion a l'annuaire*/
 	printf("Connecting the socket\n");
-	ret = connect(sock, (struct sockaddr *) address, sizeof(struct sockaddr_in));
+	ret = connect(sock, (struct sockaddr *) address, sizeof(struct sockaddr_in));/*
 	if (ret < 0)
 		erreur_IO("Socket connection\n");
 	printf("resolv success\n");
-	freeResolv();
+	freeResolv();//*/
+	
 //*
-	//Envoie de l'identifiant à l'annuaire
-	identifier = ID_SERVER;
-	writeSize = send(sock, (const void *) &identifier, sizeof(identifier), 0);
-	if (writeSize == -1)
-		erreur_IO("Writing address line");//*/
-	//Envoie du port de connexion client à l'annuaire
-	writeSize = send(sock, (const void *) port, sizeof(short),0);
-	if (writeSize == -1)
-		erreur_IO("Writing address line");//*/
-	printf("sending address line\nwriting %d bits\n",writeSize);
-	//Pining each second to allow annnuaire be sure server is still up
-	while(isRunning == 1){
-		//printf("%s Ping value : %d\n", SERVER_ANNUAIRE, pingValue);
-		send(sock, (const void *) &pingValue, sizeof(pingValue),0);
-		sleep(1);
+	if (ret >=0){
+		//Envoie de l'identifiant à l'annuaire
+		identifier = ID_SERVER;
+		writeSize = send(sock, (const void *) &identifier, sizeof(identifier), 0);
+		if (writeSize == -1)
+			erreur_IO("Writing address line");//*/
+		//Envoie du port de connexion client à l'annuaire
+		writeSize = send(sock, (const void *) port, sizeof(short),0);
+		if (writeSize == -1)
+			erreur_IO("Writing address line");//*/
+		printf("sending address line\nwriting %d bits\n",writeSize);
+		//Pining each second to allow annnuaire be sure server is still up
+		while(isRunning == 1){
+			//printf("%s Ping value : %d\n", SERVER_ANNUAIRE, pingValue);
+			send(sock, (const void *) &pingValue, sizeof(pingValue),0);
+			sleep(1);
+		}
 	}
-	return;
+	else{
+		printf("Unable to join the annuaire, client can still use direct ip connection\n");
+	}
+	shutdown(sock,2);
+	close(sock);
+	pthread_exit(NULL);
 }
 

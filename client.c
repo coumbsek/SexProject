@@ -11,52 +11,57 @@ int main(int argc, char *argv[]) {
 	struct	sockaddr_in *address;
 	int 	writeSize;
 	char 	*buff,*teste;
-	char 	ADDR_CLIENT[LIGNE_MAX],PORT_CLIENT[LIGNE_MAX];
+	char 	ADDR_CLIENT[17],PORT_CLIENT[5];
 
 	pthread_t thread_id;
 
-	if (argc != 3){
-		erreur("usage: %s machine port\n", argv[0]);
+	if (argc == 1){	
+		// on lance la connexion annuaire-client
+		pthread_t threadAnnuaire;
+		if (pthread_create(&threadAnnuaire, NULL, connexionHandlerAnnuaire,NULL)!=0){
+			perror("could not create thread");
+			return 1;
+		}
+
+		// on récupère l'adresse choisi par le client  
+		if(pthread_join(threadAnnuaire,(void**)&buff)!=0)
+		{
+			perror("join"); 
+			exit(1);
+		}
+
+		printf("Connexion à : %s \n", (char *) buff);
+
+		teste=(char *)buff; 	
+		
+
+		i=0;
+		while(teste[i]!=' ')
+		{
+			i=i+1;
+		}
+		printf("1\n");
+		//on récupère l'adresse IP
+		strncpy(ADDR_CLIENT,teste,i);
+		ADDR_CLIENT[i]='\0';
+
+		printf("%s",ADDR_CLIENT);
+		//on récupère le port
+		strncpy(PORT_CLIENT,teste+(i+1),4);
+		PORT_CLIENT[4]='\0';
+		printf(" %s\n",PORT_CLIENT);
 	}
-	
-	// on lance la connexion annuaire-client
-	pthread_t threadAnnuaire;
-	if (pthread_create(&threadAnnuaire, NULL, connexionHandlerAnnuaire,NULL)!=0){
-		perror("could not create thread");
-		return 1;
+	else if(argc == 3){
+		printf("T\n");
+		strncpy(ADDR_CLIENT, argv[1], 17);
+		printf("U\n");
+		strncpy(PORT_CLIENT, argv[2], 5);
+		printf("V\n");
 	}
-
-	// on récupère l'adresse choisi par le client  
-	if(pthread_join(threadAnnuaire,(void**)&buff)!=0)
-	{
-		perror("join"); 
-		exit(1);
+	else{
+		erreur("usage: %s\nusage: %s ipV4 port\n",argv[0],argv[0]);
 	}
-
-	printf("Connexion à : %s \n", (char *) buff);
-
-	teste=(char *)buff; 	
-	
-
-	i=0;
-	while(teste[i]!=' ')
-	{
-		i=i+1;
-	}
-	printf("1\n");
-	
-	
-	//on récupère l'adresse IP
-	strncpy(ADDR_CLIENT,teste,i);
-	ADDR_CLIENT[i]='\0';
-
-	printf("%s",ADDR_CLIENT);
-	//on récupère le port
-	strncpy(PORT_CLIENT,teste+(i+1),4);
-	PORT_CLIENT[4]='\0';
-	printf(" %s\n",PORT_CLIENT);
-	
-	
+		
 //*	
 	printf("%s: creating a socket\n", CMD);
 	sock = socket (AF_INET, SOCK_STREAM, 0);
@@ -220,12 +225,9 @@ void *connexionHandlerAnnuaire(void *p){
 	}	
 	
 	pthread_exit(buff);
-
-
-//fin de modification
-	
+	//fin de modification
 }
-
+//*
 void *connexionListener(void *tDatas){
 	InfoThread threadData = *(InfoThread *) tDatas;
 	int log = threadData.logFile.fd;
@@ -249,3 +251,5 @@ void *connexionListener(void *tDatas){
 			printf("%s\n", buff);
 	}
 }
+//*/
+
