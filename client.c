@@ -11,6 +11,8 @@ int main(int argc, char *argv[]) {
 	struct	sockaddr_in *address;
 	int 	writeSize;
 	char 	*buff,*teste;
+	char 	ADDR_CLIENT[LIGNE_MAX],PORT_CLIENT[LIGNE_MAX];
+
 	pthread_t thread_id;
 
 	if (argc != 3){
@@ -33,10 +35,9 @@ int main(int argc, char *argv[]) {
 
 	printf("Connexion à : %s \n", (char *) buff);
 
-	printf("1\n");
-
 	teste=(char *)buff; 	
 	
+
 	i=0;
 	while(teste[i]!=' ')
 	{
@@ -44,26 +45,31 @@ int main(int argc, char *argv[]) {
 	}
 	printf("1\n");
 	
+	
 	//on récupère l'adresse IP
-	strncpy(argv[1],teste,i);
-	
+	strncpy(ADDR_CLIENT,teste,i);
+	ADDR_CLIENT[i]='\0';
+
+	printf("%s",ADDR_CLIENT);
 	//on récupère le port
-	strncpy(argv[2],teste+i+1,4);
+	strncpy(PORT_CLIENT,teste+(i+1),4);
+	PORT_CLIENT[4]='\0';
+	printf(" %s\n",PORT_CLIENT);
 	
+	
+//*	
 	printf("%s: creating a socket\n", CMD);
 	sock = socket (AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
 		erreur_IO("socket");
 	}
 
-	printf("%s: DNS resolving for %s, port %s\n", CMD, argv[1], argv[2]);
-	address = resolv(argv[1], argv[2]);
+	printf("%s: DNS resolving for %s, port %s\n", CMD, ADDR_CLIENT, PORT_CLIENT);
+	address = resolv(ADDR_CLIENT, PORT_CLIENT);
 	if (address == NULL) {
-		erreur("adresse %s port %s inconnus\n", argv[1], argv[2]);
+		erreur("adresse %s port %s inconnus\n", ADDR_CLIENT, PORT_CLIENT);
 	}
-	printf("%s: adr %s, port %hu\n", CMD,
-	stringIP(ntohl(address->sin_addr.s_addr)),
-	ntohs(address->sin_port));
+	printf("%s: adr %s, port %hu\n", CMD,stringIP(ntohl(address->sin_addr.s_addr)),ntohs(address->sin_port));
 
 	// connexion sur site distant 
 	printf("%s: connecting the socket\n", CMD);

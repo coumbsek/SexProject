@@ -11,6 +11,7 @@ int	main(int argc , char *argv[])
 {
 	int	ecoute, 
 		client_sock, 
+		port,
 		c;
 	struct	sockaddr_in	server, 
 			  	client;
@@ -20,14 +21,14 @@ int	main(int argc , char *argv[])
 		erreur("usage: %s port\n", argv[0]);
 	
 	pthread_t threadAnnuaire;
-	c = atoi(argv[1]);
-	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &c) < 0)
+	port = atoi(argv[1]);
+	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &port) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
 
-/*
+//*
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -210,3 +211,4 @@ void	*connexionHandlerAnnuaire(void *port){
 	}
 	return;
 }
+
