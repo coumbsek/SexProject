@@ -6,8 +6,9 @@
 void 	*connexionHandler(void *);
 int 	rAzLog(int fd); 
 void 	*connexionHandlerAnnuaire(void *port);
-
-char *nom_du_fichier;
+void	*connexionHandlerClient(void *tDatas);
+void	*commandHandler(void *datas);
+char	*nom_du_fichier;
 
 InfoThread cohorteClient[NBCLIENTS_SERVER];
 
@@ -16,7 +17,8 @@ int	main(int argc , char *argv[])
 	int	ecoute, 
 		client_sock, 
 		port,
-		c;
+		c,
+		j;
 	struct	sockaddr_in	server, 
 			  	client;
 	FileL 	log;
@@ -64,20 +66,40 @@ int	main(int argc , char *argv[])
 	//Listen
 	listen(ecoute , 3);
 	
+	iniCohorte(cohorteClient, NBCLIENTS_SERVER);
+	
+	pthread_t thread_id;
+
+	if( pthread_create( &thread_id , NULL ,  commandHandler , &thread_id) < 0)//client_sock
+	{
+		perror("could not create thread");
+		return 1;
+	}
+
+
 	//Accept and incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
-	pthread_t thread_id;
 	while( (client_sock = accept(ecoute, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
 		puts("Connection accepted");
-	 	
-		InfoThread threadData = {0};
-		threadData.logFile.fd = log.fd;
-		threadData.sock = client_sock;
-		threadData.thread_id = thread_id;
-		
-		if( pthread_create( &thread_id , NULL ,  connexionHandler , (void*) &threadData) < 0)//client_sock
+	 
+		for(j=0;j<NBCLIENTS_SERVER;j++){
+			if(cohorteClient[j].isFree==1)
+				break;
+		}
+
+		if (j==NBCLIENTS_SERVER){
+			write(client_sock, "stop", 5*sizeof(char));
+			shutdown(client_sock, 2);
+			close(client_sock);
+			continue;
+		}
+
+		cohorteClient[j].isFree = 0;
+		cohorteClient[j].sock = client_sock;
+
+		if( pthread_create( &thread_id , NULL ,  connexionHandlerClient , (void*) &j) < 0)//client_sock
 		{
 			perror("could not create thread");
 			return 1;
@@ -99,12 +121,42 @@ int	main(int argc , char *argv[])
 	return 0;
 }
 //*
-void	*connexionHandler(void *tDatas)
+
+void	iniCohorte(InfoThread *cohorte, int size){
+	int j;
+	for (j = 0; j<size;j++){
+		cohorte[j].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+		cohorte[j].isServer = 0;
+		cohorte[j].isFree = 1;
+		cohorte[j].ip = malloc(sizeof(char)*17);
+	}
+}
+
+void	*commandHandler(void *datas){
+	int retval,
+	    j;
+	char buff[11];
+
+	//infothread *thread = (infothread *) datas;
+
+	while(1){
+		fgets(buff, 10, stdin);
+		if (strcmp("stop\n",buff) == 0){
+			for (j = 0; j < NBCLIENTS_SERVER; j++){
+				write(cohorteClient[j].sock, buff, strlen(buff));
+				shutdown(cohorteClient[j].sock,2);
+				close(cohorteClient[j].sock);
+			}
+		}	
+	}
+}
+
+void	*connexionHandlerClient(void *tDatas)
 {
 	//Get the socket descriptor
 	//int sock = *(int*)ecoute;
-	
-	InfoThread 	threadData = *(InfoThread *) tDatas;
+	int j = *(int *) tDatas;
+	InfoThread 	threadData = cohorteClient[j];
 	int 	log = threadData.logFile.fd;
 	int 	sock = threadData.sock;
 	
@@ -168,57 +220,6 @@ void	*connexionHandler(void *tDatas)
 	fclose(fi);
 
 // fin des modifications
-
-
-/*Mis en commentaire par Nabil
-	//Send some messages to the client
-	message = "[Server] : Hello! I'm your connection handler\n";
-	write(sock , message , strlen(message));
-
-	//Receive a message from client
-	while(1)
-	{
-		readSize = lireLigne(sock , buff);//rcv
-		if (readSize <=0 || readSize == LIGNE_MAX) {
-			erreur_IO("lireLigne");
-		}
-		else if (readSize==0)
-			continue;
-		else{
-			printf("[Serveur] : reception %d octets : \"%s\"\n", readSize, buff);
-			writeSize = ecrireLigne(log,buff);
-			if(writeSize !=-1)
-				printf("[Serveur] : ecriture de %d octets\n", writeSize);
-		}
-		if (strcmp(buff,"fin\n")==0){
-			printf("[Serveur] : Arret en cours\n");
-			*flagStop = 1;
-			break;
-		}
-		else if(strcmp(buff, "exit\n")==0){
-			printf("[Serveur] : Client disconnection\n");
-			break;
-		}
-		else if (strcmp(buff, "init\n")==0){
-			printf("[Serveur] : Remise a zero journal\n");
-			rAzLog(log);
-		}
-		//write(sock , buff , strlen(buff));
-		//clear the message buffer
-		memset(buff, 0, LIGNE_MAX);
-	}
-	
-	if(readSize == 0)
-	{
-		erreur_IO("Client disconnected");
-		fflush(stdout);
-	}
-	else if(readSize == -1)
-	{
-		perror("lireLigne failed");
-	}
-//*/
-	
 	pthread_exit(flagStop);
 }
 
@@ -239,42 +240,39 @@ void	*connexionHandlerAnnuaire(void *port){
 	printf("Connection to annuaire : %s, port %s\n", ADDR_ANNUAIRE,PORT_ANNUAIRE);
 	address = resolv(ADDR_ANNUAIRE,PORT_ANNUAIRE);
 	if (address == NULL)
-		erreur("address %s port %s unknow\n",ADDR_ANNUAIRE,PORT_ANNUAIRE);
-	printf("Successfully resolved  %s, port %hu\n",
-			stringIP(ntohl(address->sin_addr.s_addr)),
-			ntohs(address->sin_port));
-	/*Connexion a l'annuaire*/
-	printf("Connecting the socket\n");
-	ret = connect(sock, (struct sockaddr *) address, sizeof(struct sockaddr_in));/*
-	if (ret < 0)
-		erreur_IO("Socket connection\n");
-	printf("resolv success\n");
-	freeResolv();//*/
-	
-//*
-	if (ret >=0){
-		//Envoie de l'identifiant à l'annuaire
-		identifier = ID_SERVER;
-		writeSize = send(sock, (const void *) &identifier, sizeof(identifier), 0);
-		if (writeSize == -1)
-			erreur_IO("Writing address line");//*/
-		//Envoie du port de connexion client à l'annuaire
-		writeSize = send(sock, (const void *) port, sizeof(short),0);
-		if (writeSize == -1)
-			erreur_IO("Writing address line");//*/
-		printf("sending address line\nwriting %d bits\n",writeSize);
-		//Pining each second to allow annnuaire be sure server is still up
-		while(isRunning == 1){
-			//printf("%s Ping value : %d\n", SERVER_ANNUAIRE, pingValue);
-			send(sock, (const void *) &pingValue, sizeof(pingValue),0);
-			sleep(1);
-		}
-	}
+		printf("address %s port %s unknow\n",ADDR_ANNUAIRE,PORT_ANNUAIRE);
 	else{
-		printf("Unable to join the annuaire, client can still use direct ip connection\n");
+		printf("Successfully resolved  %s, port %hu\n",
+				stringIP(ntohl(address->sin_addr.s_addr)),
+				ntohs(address->sin_port));
+		/*Connexion a l'annuaire*/
+		printf("Connecting the socket\n");
+		ret = connect(sock, (struct sockaddr *) address, sizeof(struct sockaddr_in));
+	//*
+		if (ret >=0){
+			//Envoie de l'identifiant à l'annuaire
+			identifier = ID_SERVER;
+			writeSize = send(sock, (const void *) &identifier, sizeof(identifier), 0);
+			if (writeSize == -1)
+				erreur_IO("Writing address line");//*/
+			//Envoie du port de connexion client à l'annuaire
+			writeSize = send(sock, (const void *) port, sizeof(short),0);
+			if (writeSize == -1)
+				erreur_IO("Writing address line");//*/
+			printf("sending address line\nwriting %d bits\n",writeSize);
+			//Pining each second to allow annnuaire be sure server is still up
+			while(isRunning == 1){
+				//printf("%s Ping value : %d\n", SERVER_ANNUAIRE, pingValue);
+				send(sock, (const void *) &pingValue, sizeof(pingValue),0);
+				sleep(1);
+			}
+		}
+		else{
+			printf("Unable to join the annuaire, client can still use direct ip connection\n");
+		}
+		shutdown(sock,2);
+		close(sock);
 	}
-	shutdown(sock,2);
-	close(sock);
 	pthread_exit(NULL);
 }
 

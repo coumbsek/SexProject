@@ -186,8 +186,13 @@ void	connexionHandlerServer(void *tDatas){
 	else if (retval){
 		readSize = recv(sock, port, sizeof(short),0);
 	}
-	else
+	else{
 		printf("No data within five seconds.\n");
+		cohorteServer[j].isFree = 1;
+		shutdown(cohorteServer[j].sock,2);
+		close(cohorteServer[j].sock);
+		pthread_exit(NULL);
+	}
 
 	pthread_mutex_lock(&(threadData.datasFile.mutex));
 	//write adresse et port to datasFile
@@ -323,6 +328,9 @@ void	connexionHandlerClient(void *tDatas)
 	printf("Le client a choisi le serveur : %s \n",buff);
 	
 	fclose(fi);
+	shutdown(sock,2);
+	close(sock);
+	cohorteClient[j].isFree=1;
 
 // fin des modifications
 	

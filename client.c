@@ -5,6 +5,8 @@
 
 void *connexionListener(void *tDatas);
 void *connexionHandlerAnnuaire(void *p);
+void *downloadFile(void *tDatas);
+void *commandHandler(void *p);
 
 int main(int argc, char *argv[]) {
 	int	sock,ret,i;
@@ -52,11 +54,8 @@ int main(int argc, char *argv[]) {
 		printf(" %s\n",portServer);
 	}
 	else if(argc == 3){
-		printf("T\n");
 		strncpy(addressServer, argv[1], 17);
-		printf("U\n");
 		strncpy(portServer, argv[2], 5);
-		printf("V\n");
 	}
 	else{
 		erreur("usage: %s\nusage: %s ipV4 port\n",argv[0],argv[0]);
@@ -84,43 +83,31 @@ int main(int argc, char *argv[]) {
 	}
 
 	freeResolv();
-	
+
 	InfoThread threadData = {0};
 	threadData.sock = sock;
 	threadData.thread_id = thread_id;
 
-	if (pthread_create(&threadData.thread_id, NULL, connexionListener, (void*) &threadData) < 0){
-		perror("[Client] : could not create Listener");
+	if (pthread_create(&threadData.thread_id, NULL, downloadFile, (void*) &threadData) < 0){
+		perror("[Client] : could not create download the file");
+		return 1;
+	}
+	pthread_t threadCommand;
+	if (pthread_create(&threadCommand, NULL, commandHandler, NULL) < 0){
+		perror("[Client] : could not create download the file");
 		return 1;
 	}
 
-	while(1){
-		printf("[Client] : ligne >");
-		if (fgets(buff, LIGNE_MAX, stdin) == NULL){
-			printf("EOF or error : arret\n");
-			break;
-		}
-		else{
-			writeSize = ecrireLigne(sock, buff);
-			if (writeSize==-1)
-				erreur_IO("Ecriture ligne");
-			if (strcmp(buff, "exit\n") == 0){
-				printf("[Client] : Deconnection demande\n");
-				break;
-			}
-			else if( strcmp(buff,"fin\n")==0 )
-			{
-				printf("[Client] : Arret du serveur demande\n");
-				break;
-			}
-			else{
-				printf("[Client] : %d octets envoyes au serveur\n", writeSize);
-			}
-		}
-	}
-	
-	while(1){
+	int retval,
+	    j;
 
+	while(1){
+		fgets(buff, 10, stdin);
+		if (strcmp("stop\n",buff) == 0){
+			
+			printf("je veux m'arreter\n");
+			return 0;
+		}	
 	}
 //*/
 	exit(EXIT_SUCCESS);
@@ -229,7 +216,56 @@ void *connexionHandlerAnnuaire(void *p){
 	//fin de modification
 }
 //*
-void *connexionListener(void *tDatas){
+void *commandHandler(void *p){
+	int retval,
+	    j;
+	char buff[11];
+
+	while(1){
+		fgets(buff, 10, stdin);
+		if (strcmp("stop\n",buff) == 0){
+			
+			printf("je veux m'arreter\n");
+			
+		}	
+	}
+}
+
+void *connexionHandlerServer(void *datas){
+//* Mis en commentaire par Nabil
+	int readSize = 0;
+	int buff;
+
+	InfoThread *thread = (InfoThread *) datas;
+	fd_set 	rfds;
+
+	FD_ZERO(&rfds);
+	FD_SET(thread->sock, &rfds);
+
+	readSize = select(thread->sock+1, &rfds, NULL, NULL, 0);
+	if (readSize == -1)
+	       perror("select()");
+	else if (readSize){
+		while(1){
+			readSize = recv(thread->thread_id, &buff, sizeof(int), 0);
+			if (readSize==-1)
+				erreur_IO("Reception Error");
+			else if( STOP == buff )
+			{
+				printf("[Client] : Deconnexion du serveur\n");
+				shutdown(thread->sock,2);
+				close(thread->sock);
+				return;
+				//pthread_exit(s);
+			}
+			else
+				printf("Code intruction %d\n", buff);
+		}
+	}
+//*/
+}
+
+void *downloadFile(void *tDatas){
 	InfoThread threadData = *(InfoThread *) tDatas;
 	int log = threadData.logFile.fd;
 	int sock = threadData.sock;
@@ -290,19 +326,5 @@ void *connexionListener(void *tDatas){
 	pthread_exit(buff);
 //fin de modification
 
-/* Mis en commentaire par Nabil
-	while(1){
-		readSize = lireLigne(sock, buff);
-		if (readSize==-1)
-			erreur_IO("Lecture ligne");
-		else if( strcmp("[Serveur] : Extinction du serveur en cours\n",buff)==0 )
-		{
-			printf("[Client] : Deconnexion du client\n");
-			pthread_exit(s);
-		}
-		else
-			printf("%s\n", buff);
-	}
-*/
 }
 

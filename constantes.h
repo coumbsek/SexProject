@@ -19,4 +19,6 @@
 #define ID_CLIENT 0x0F00
 #define ID_ANNUAIRE 0xF000
 
+#define STOP 0x5709
+
 #endif

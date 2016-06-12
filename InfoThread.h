@@ -11,22 +11,6 @@ typedef struct InfoThread{
 	char isFree;
 	char *ip;
 	pthread_mutex_t mutex;	
-	/*union{
-		struct{
-			int logFile;
-			int sock;
-			int thread_id;
-			char isFree;
-		}InfoThreadC;
-
-		struct{
-			int logFile;
-			short datasServers;
-			int sock;
-			int thread_id;
-			char isFree;
-			int connexionPort;
-		}InfoThreadS;
-	};*/
 }InfoThread;
+
 #endif
