@@ -6,6 +6,7 @@
 
 #define NBCLIENTS 3
 #define NBSERVERS 2
+#define NBCLIENTS_SERVER 5
 
 #define CLIENT_ANNUAIRE "[Client->Annuaire]"
 #define ANNUAIRE_CLIENT "[Annuaire->Client]"
