@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
 	struct	sockaddr_in *address;
 	int 	writeSize;
 	char 	*buff,*teste;
-	char 	ADDR_CLIENT[17],PORT_CLIENT[5];
+	char 	addressServer[17],portServer[5];
 
 	pthread_t thread_id;
 
@@ -42,20 +42,20 @@ int main(int argc, char *argv[]) {
 		}
 		printf("1\n");
 		//on récupère l'adresse IP
-		strncpy(ADDR_CLIENT,teste,i);
-		ADDR_CLIENT[i]='\0';
+		strncpy(addressServer,teste,i);
+		addressServer[i]='\0';
 
-		printf("%s",ADDR_CLIENT);
+		printf("%s",addressServer);
 		//on récupère le port
-		strncpy(PORT_CLIENT,teste+(i+1),4);
-		PORT_CLIENT[4]='\0';
-		printf(" %s\n",PORT_CLIENT);
+		strncpy(portServer,teste+(i+1),4);
+		portServer[4]='\0';
+		printf(" %s\n",portServer);
 	}
 	else if(argc == 3){
 		printf("T\n");
-		strncpy(ADDR_CLIENT, argv[1], 17);
+		strncpy(addressServer, argv[1], 17);
 		printf("U\n");
-		strncpy(PORT_CLIENT, argv[2], 5);
+		strncpy(portServer, argv[2], 5);
 		printf("V\n");
 	}
 	else{
@@ -69,10 +69,10 @@ int main(int argc, char *argv[]) {
 		erreur_IO("socket");
 	}
 
-	printf("%s: DNS resolving for %s, port %s\n", CMD, ADDR_CLIENT, PORT_CLIENT);
-	address = resolv(ADDR_CLIENT, PORT_CLIENT);
+	printf("%s: DNS resolving for %s, port %s\n", CMD, addressServer, portServer);
+	address = resolv(addressServer, portServer);
 	if (address == NULL) {
-		erreur("adresse %s port %s inconnus\n", ADDR_CLIENT, PORT_CLIENT);
+		erreur("adresse %s port %s inconnus\n", addressServer, portServer);
 	}
 	printf("%s: adr %s, port %hu\n", CMD,stringIP(ntohl(address->sin_addr.s_addr)),ntohs(address->sin_port));
 

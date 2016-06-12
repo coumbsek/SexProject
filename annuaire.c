@@ -10,7 +10,7 @@ void	*connexionHandler(void *);
 void	connexionHandlerClient(void *);
 void	connexionHandlerServer(void *);
 int	rAzLog(int fd); 
-void	iniCohorte(InfoThread *cohorte, int size);
+void	iniCohorte(InfoThread *cohorte, int size, int type);
 
 InfoThread cohorteServer[NBSERVERS];
 InfoThread cohorteClient[NBCLIENTS];
@@ -28,10 +28,6 @@ int	main(int argc , char *argv[])
 			   client;
 	FileL	log, 
 		datasServers;
-	
-	if (argc < 2)
-		erreur("usage: %s port\n", argv[0]);
-	
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -44,7 +40,7 @@ int	main(int argc , char *argv[])
 	//Prepare the sockaddr_in structure
 	annuaire.sin_family = AF_INET;
 	annuaire.sin_addr.s_addr = INADDR_ANY;
-	annuaire.sin_port = htons( atoi(argv[1]) );
+	annuaire.sin_port = htons( atoi(PORT_ANNUAIRE) );
 	
 	//Bind
 	if( bind(ecoute,(struct sockaddr *)&annuaire , sizeof(annuaire)) < 0){
@@ -67,19 +63,9 @@ int	main(int argc , char *argv[])
 	
 	//Listen
 	listen(ecoute , NBCLIENTS + NBSERVERS);
-	
-	for (j = 0; j<NBSERVERS;j++){
-		cohorteServer[j].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
-		cohorteServer[j].isServer = 1;
-		cohorteServer[j].isFree = 1;
-		cohorteServer[j].ip = malloc(sizeof(char)*17);
-	}
-	for (j = 0; j<NBCLIENTS;j++){
-		cohorteClient[j].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
-		cohorteClient[j].isServer = 0;
-		cohorteClient[j].isFree = 1;
-		cohorteClient[j].ip = malloc(sizeof(char)*17);
-	}
+
+	iniCohorte(cohorteServer, NBSERVERS, 1);
+	iniCohorte(cohorteClient, NBCLIENTS, 0);
 
 	//Accept an incoming connection
 	//puts("Waiting for incoming connections...");
@@ -88,8 +74,6 @@ int	main(int argc , char *argv[])
 	while( (client_sock = accept(ecoute, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
 		
-		puts("Connection accepted");
-	 	
 		fd_set 	rfds;
 		struct 	timeval tv = {5,0};
 
@@ -156,9 +140,6 @@ int	main(int argc , char *argv[])
 				printf("Client joined\n");
 			}
 		}
-		//Now join the thread , so that we dont terminate before the thread
-		//pthread_join( thread_id , NULL);
-		puts("Handler assigned");
 	}
 	
 	if (client_sock < 0)
@@ -168,6 +149,16 @@ int	main(int argc , char *argv[])
 	}
 	
 	return 0;
+}
+
+void	iniCohorte(InfoThread *cohorte, int size, int type){
+	int j;
+	for (j = 0; j<size;j++){
+		cohorte[j].mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+		cohorte[j].isServer = type;
+		cohorte[j].isFree = 1;
+		cohorte[j].ip = malloc(sizeof(char)*17);
+	}
 }
 
 void	connexionHandlerServer(void *tDatas){
