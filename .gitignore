@@ -4,3 +4,6 @@ tcpServer
 annuaire
 .*
 servers.datas
+*(copy).c
+*.txt
+*.c~
