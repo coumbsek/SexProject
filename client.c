@@ -118,10 +118,11 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	//*/
+	
 	while(1){
 
 	}
+//*/
 	exit(EXIT_SUCCESS);
 }
 
@@ -234,10 +235,62 @@ void *connexionListener(void *tDatas){
 	int sock = threadData.sock;
 	
 	int readSize;
-	char *message , buff[LIGNE_MAX];
+	char *message;
+	char buff[LIGNE_MAX];
 	
 	char *s = malloc(5*sizeof(char));
 
+// modification de Nabil, on récupère le fichié envoyé par le serveur
+	// variable ajoutée 
+	int i,ligne,ret;
+	i=0;
+	ligne=0;
+	FILE *fi;
+	
+	fi=fopen("tmp.txt","w+"); //fichié ouvert en ecriture+lecture et création si existe pas
+
+	// on recoit le message de début d'envoie
+	ret = lireLigne(sock, buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
+	}	  
+	printf("%s \n", buff);
+
+
+	//on recoit le nombre de ligne
+	ret = lireLigne(sock,buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
+	}
+	
+	//on converti le char* en int
+	ligne = atoi(buff);
+
+	// on voir le contenu du fichier
+	for(i=0;i<ligne;i++)
+	{
+
+		ret = lireLigne(sock, buff); 
+		if (ret <=0 || ret == LIGNE_MAX) {
+			erreur_IO("lireLigne");
+		}		  
+		fprintf(fi, buff);
+		fprintf(fi, "\n");
+	}
+
+	fclose(fi);
+
+	// on recoit le message de fin d'envoie
+	ret = lireLigne(sock, buff);
+	if (ret <=0 || ret == LIGNE_MAX) {
+		erreur_IO("lireLigne");
+	}	  
+	printf("%s \n", buff);
+
+	pthread_exit(buff);
+//fin de modification
+
+/* Mis en commentaire par Nabil
 	while(1){
 		readSize = lireLigne(sock, buff);
 		if (readSize==-1)
@@ -250,6 +303,6 @@ void *connexionListener(void *tDatas){
 		else
 			printf("%s\n", buff);
 	}
+*/
 }
-//*/
 

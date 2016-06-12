@@ -7,6 +7,10 @@ void 	*connexionHandler(void *);
 int 	rAzLog(int fd); 
 void 	*connexionHandlerAnnuaire(void *port);
 
+char *nom_du_fichier;
+
+InfoThread cohorteClient[NBCLIENTS_SERVER];
+
 int	main(int argc , char *argv[])
 {
 	int	ecoute, 
@@ -19,9 +23,10 @@ int	main(int argc , char *argv[])
 	
 	if (argc < 3)
 		erreur("usage: %s port file\n", argv[0]);
-	
+		
 	pthread_t threadAnnuaire;
 	port = atoi(argv[1]);
+	nom_du_fichier = argv[2];
 	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &port) < 0)
 	{
 		perror("could not create thread");
@@ -104,11 +109,72 @@ void	*connexionHandler(void *tDatas)
 	int 	sock = threadData.sock;
 	
 	int 	readSize, writeSize;
-	char 	*message , buff[LIGNE_MAX];
+	char 	*message;
+	char 	buff[LIGNE_MAX];
 	char 	*flagStop = malloc(sizeof(char));
+
+//Modification Nabil, envoie du fichier
+
+// variable ajoutée 
+	int i,ligne,ret;
+	i=0;
+	ligne=0;
+	FILE *fi;
+	fi=fopen(nom_du_fichier,"r+"); //fichié ouvert en ecriture+lecture
+
+	//Message pour le client
+
+	message = "Envoie du fichier en cours\n";
+	write(sock , message , strlen(message));
+  	printf("%s",message);
+
+	// on compte le nombre de ligne dans le fichier
+	while(fgets(buff,LIGNE_MAX,fi)!=NULL)
+	{
+		ligne++;
+	}
+
+	printf("%d\n",ligne);
+	//convertit ligne en char* et l'envoie
+	sprintf(buff, "%d", ligne);
+
+	ret = ecrireLigne(sock, buff);
+	if (ret == -1) {
+		erreur_IO("ecrireLigne");
+	}
+
+	printf("%s\n",buff);
+
+	//on envoit le fichier
+	fseek(fi,0,SEEK_SET); //on se remet au début du fichier
+	for(i=0;i<ligne;i++)
+	{
+		if (fgets(buff, LIGNE_MAX,fi) == NULL) {
+			erreur("fgets");
+		}
+		ret = ecrireLigne(sock, buff);
+		if (ret == -1) {
+			erreur_IO("ecrireLigne");
+		}
+	}
+
+
+	fseek(fi,0,SEEK_SET); //on se remet au début du fichier
+
+	message ="Fichier recu\n";
+	write(sock , message , strlen(message));
+	printf("%s",message);	
+
+	fclose(fi);
+
+// fin des modifications
+
+
+/*Mis en commentaire par Nabil
 	//Send some messages to the client
 	message = "[Server] : Hello! I'm your connection handler\n";
 	write(sock , message , strlen(message));
+
 	//Receive a message from client
 	while(1)
 	{
@@ -151,19 +217,11 @@ void	*connexionHandler(void *tDatas)
 	{
 		perror("lireLigne failed");
 	}
+//*/
 	
 	pthread_exit(flagStop);
 }
-//*/
-int	rAzLog(int fd) {
-	int newFd;
-	if (close(fd) == -1)
-		erreur_IO("close log");
-	newFd = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
-	if (newFd == -1)
-		erreur_IO("open trunc log");
-	return newFd;
-}
+
 
 void	*connexionHandlerAnnuaire(void *port){
 	char		isRunning = 1;
