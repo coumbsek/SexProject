@@ -176,6 +176,7 @@ void	connexionHandlerServer(void *tDatas){
 	int	readSize;
 	short	*port = malloc(sizeof(short));
 	char	pingValue = 1;
+	char	fileName[LIGNE_MAX];
 
 	FD_ZERO(&rfds);
 	FD_SET(sock, &rfds);
@@ -194,19 +195,43 @@ void	connexionHandlerServer(void *tDatas){
 		pthread_exit(NULL);
 	}
 
+	retval = select(sock+1, &rfds, NULL, NULL, &tv);
+	if (retval == -1)
+               perror("select()");
+	else if (retval){
+		readSize = recv(sock, fileName, LIGNE_MAX,0);
+	}
+	else{
+		printf("No data within five seconds.\n");
+		cohorteServer[j].isFree = 1;
+		shutdown(cohorteServer[j].sock,2);
+		close(cohorteServer[j].sock);
+		pthread_exit(NULL);
+	}
+
+
 	pthread_mutex_lock(&(threadData.datasFile.mutex));
 	//write adresse et port to datasFile
 		char str[8];
 		sprintf(str, "%d", *port);
 		for (j = 0; j < 17; j++){
-			if (!((threadData.ip[j] >= '0' && threadData.ip[j] <='9') || threadData.ip[j] == '.')){
+			if (!((threadData.ip[j] >= '0' && threadData.ip[j] <='9') || threadData.ip[j] == '.'))
 				break;
-			}
+		}
+		for (j = 0; j < 17; j++){
+			if (threadData.ip[j] == '\0')
+				break;
 		}
 		threadData.ip[j] = '\0';
 		write(threadData.datasFile.fd, threadData.ip, sizeof(char)*j);
 		write(threadData.datasFile.fd, " ", sizeof(char));
 		write(threadData.datasFile.fd, str, 4*sizeof(char));
+		write(threadData.datasFile.fd, " ", sizeof(char));
+		for (j = 0; j < LIGNE_MAX; j++){
+			if (fileName[j] == '\0')
+				break;
+		}
+		write(threadData.datasFile.fd, fileName, sizeof(char)*j);
 		write(threadData.datasFile.fd, "\n", sizeof(char));
 	pthread_mutex_unlock(&(threadData.datasFile.mutex));
 

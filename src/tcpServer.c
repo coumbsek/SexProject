@@ -35,6 +35,7 @@ int	main(int argc , char *argv[])
 	pthread_t threadAnnuaire;
 	port = atoi(argv[1]);
 	nom_du_fichier = argv[2];
+	//strcpy(nom_du_fichier, argv[2]);
 	if( pthread_create( &threadAnnuaire , NULL ,  connexionHandlerAnnuaire , (void*) &port) < 0)
 	{
 		perror("could not create thread");
@@ -155,15 +156,6 @@ void	iniCohorte(InfoThread *cohorte, int size){
 	}
 }
 
-void	*commandHandler(void *datas){
-	int retval,
-	    j;
-	char buff[11];
-
-	//infothread *thread = (infothread *) datas;
-
-	}
-
 void	*connexionHandlerClient(void *tDatas)
 {
 	//Get the socket descriptor
@@ -271,9 +263,16 @@ void	*connexionHandlerAnnuaire(void *port){
 			//Envoie du port de connexion client à l'annuaire
 			writeSize = send(sock, (const void *) port, sizeof(short),0);
 			if (writeSize == -1)
-				erreur_IO("Writing address line");//*/
+				erreur_IO("Writing port line");//*/
 			printf("sending address line\nwriting %d bits\n",writeSize);
-			//Pining each second to allow annnuaire be sure server is still up
+			//Envoie du nom du fichier à l'annuaire
+			writeSize = send(sock, (const void *) nom_du_fichier, (strlen(nom_du_fichier)+1)*sizeof(char),0);
+			printf("Nom du fichier : %s\n", nom_du_fichier);
+			if (writeSize == -1)
+				erreur_IO("Writing file name line");//*/
+			printf("sending file name line\nwriting %d bits\n",writeSize);
+			
+			//Pinging each second to allow annnuaire be sure server is still up
 			while(isRunning == 1){
 				//printf("%s Ping value : %d\n", SERVER_ANNUAIRE, pingValue);
 				send(sock, (const void *) &pingValue, sizeof(pingValue),0);
