@@ -144,7 +144,6 @@ void *connexionHandlerAnnuaire(void *p){
 	if (writeSize == -1)
 		erreur_IO("Writing address line");//*/
 
-//modification de Nabil
 
 	// on recoit le texte envoyé par l'annuaire
 	ret = lireLigne(sock, buff);
@@ -226,7 +225,6 @@ void *commandHandler(void *p){
 }
 
 void *connexionHandlerServer(void *datas){
-//* Mis en commentaire par Nabil
 	int readSize = 0;
 	int buff;
 
@@ -249,8 +247,7 @@ void *connexionHandlerServer(void *datas){
 				printf("[Client] : Deconnexion du serveur\n");
 				shutdown(thread->sock,2);
 				close(thread->sock);
-				return;
-				//pthread_exit(s);
+				pthread_exit(NULL);
 			}
 			else
 				printf("Code intruction %d\n", buff);
@@ -270,7 +267,6 @@ void *downloadFile(void *tDatas){
 	
 	char *s = malloc(5*sizeof(char));
 
-// modification de Nabil, on récupère le fichié envoyé par le serveur
 	// variable ajoutée 
 	int i,ligne,ret;
 	i=0;

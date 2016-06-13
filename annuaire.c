@@ -229,6 +229,8 @@ void	connexionHandlerServer(void *tDatas){
 		else{
 			printf("No data within five seconds : Tiemout.\n");
 			cohorteServer[j].isFree=1;
+			shutdown(cohorteServer[j].sock,2);
+			close(cohorteServer);
 			pthread_exit(NULL);
 		}
 	}
@@ -246,7 +248,6 @@ void	connexionHandlerClient(void *tDatas)
 	char	*message, buff[LIGNE_MAX];
 	char	*flagStop = malloc(sizeof(char));
 
-// modification de Nabil
 	// variable ajoutée 
 	int i,ligne,ret;
 	i=1;
