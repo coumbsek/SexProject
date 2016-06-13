@@ -7,25 +7,31 @@ void 	*connexionHandler(void *);
 int 	rAzLog(int fd); 
 void 	*connexionHandlerAnnuaire(void *port);
 void	*connexionHandlerClient(void *tDatas);
-void	*commandHandler(void *datas);
+void	*connexionHelper(void *p);
 char	*nom_du_fichier;
 
 InfoThread cohorteClient[NBCLIENTS_SERVER];
 
 int	main(int argc , char *argv[])
 {
-	int	ecoute, 
-		client_sock, 
-		port,
+	int	port,
 		c,
 		j;
-	struct	sockaddr_in	server, 
-			  	client;
+	
+	char	buff[11];
+
 	FileL 	log;
 	
 	if (argc < 3)
 		erreur("usage: %s port file\n", argv[0]);
 		
+	iniCohorte(cohorteClient, NBCLIENTS_SERVER);
+	
+	log.fd = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
+	if (log.fd == -1) {
+		erreur_IO("open log");
+	}
+
 	pthread_t threadAnnuaire;
 	port = atoi(argv[1]);
 	nom_du_fichier = argv[2];
@@ -35,7 +41,43 @@ int	main(int argc , char *argv[])
 		return 1;
 	}
 
+	pthread_t threadConnexion;	
+	if( pthread_create( &threadConnexion , NULL ,  connexionHelper , (void*) &port) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+
 //*
+	while(1){
+		fgets(buff, 10, stdin);
+		if (strcmp("stop\n",buff) == 0){
+			for (j = 0; j < NBCLIENTS_SERVER; j++){
+				write(cohorteClient[j].sock, buff, strlen(buff));
+				shutdown(cohorteClient[j].sock,2);
+				close(cohorteClient[j].sock);
+				exit(EXIT_SUCCESS);
+			}
+		}	
+	}
+
+	pthread_join( threadConnexion, NULL);
+ 	pthread_join( threadAnnuaire , NULL);
+	return 0;
+}
+//*
+
+void	*connexionHelper(void *p){
+	int 	j,
+		client_sock,
+		ecoute,
+		c;
+	
+	int port = *(int *) p;
+	
+	struct	sockaddr_in	server, 
+			  	client;
+
 	//Create socket
 	ecoute = socket(AF_INET , SOCK_STREAM , 0);
 	if (ecoute == -1)
@@ -47,7 +89,7 @@ int	main(int argc , char *argv[])
 	//Prepare the sockaddr_in structure
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port = htons( atoi(argv[1]) );
+	server.sin_port = htons( port );
 	
 	//Bind
 	if( bind(ecoute,(struct sockaddr *)&server , sizeof(server)) < 0)
@@ -58,25 +100,9 @@ int	main(int argc , char *argv[])
 	}
 	puts("bind done");
 	
-	log.fd = open("journal.log", O_WRONLY|O_APPEND|O_CREAT|O_TRUNC, 0660);
-	if (log.fd == -1) {
-		erreur_IO("open log");
-	}
-	
 	//Listen
 	listen(ecoute , 3);
 	
-	iniCohorte(cohorteClient, NBCLIENTS_SERVER);
-	
-	pthread_t thread_id;
-
-	if( pthread_create( &thread_id , NULL ,  commandHandler , &thread_id) < 0)//client_sock
-	{
-		perror("could not create thread");
-		return 1;
-	}
-
-
 	//Accept and incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
@@ -90,7 +116,7 @@ int	main(int argc , char *argv[])
 		}
 
 		if (j==NBCLIENTS_SERVER){
-			write(client_sock, "stop", 5*sizeof(char));
+			//write(client_sock, "stop", 5*sizeof(char));
 			shutdown(client_sock, 2);
 			close(client_sock);
 			continue;
@@ -99,14 +125,15 @@ int	main(int argc , char *argv[])
 		cohorteClient[j].isFree = 0;
 		cohorteClient[j].sock = client_sock;
 
-		if( pthread_create( &thread_id , NULL ,  connexionHandlerClient , (void*) &j) < 0)//client_sock
+		
+		if( pthread_create( &(cohorteClient[j].thread_id) , NULL ,  connexionHandlerClient , (void*) &j) < 0)//client_sock
 		{
 			perror("could not create thread");
 			return 1;
 		}
 	 	
 		//Now join the thread , so that we dont terminate before the thread
-		pthread_join( thread_id , NULL);
+		//pthread_join( &(cohorteClient[j].thread_id) , NULL);
 		puts("Handler assigned");
 	}
 	
@@ -115,12 +142,8 @@ int	main(int argc , char *argv[])
 		perror("accept failed");
 		return 1;
 	}
-	//*/
-	
- 	pthread_join( threadAnnuaire , NULL);
-	return 0;
+
 }
-//*
 
 void	iniCohorte(InfoThread *cohorte, int size){
 	int j;
@@ -139,17 +162,7 @@ void	*commandHandler(void *datas){
 
 	//infothread *thread = (infothread *) datas;
 
-	while(1){
-		fgets(buff, 10, stdin);
-		if (strcmp("stop\n",buff) == 0){
-			for (j = 0; j < NBCLIENTS_SERVER; j++){
-				write(cohorteClient[j].sock, buff, strlen(buff));
-				shutdown(cohorteClient[j].sock,2);
-				close(cohorteClient[j].sock);
-			}
-		}	
 	}
-}
 
 void	*connexionHandlerClient(void *tDatas)
 {

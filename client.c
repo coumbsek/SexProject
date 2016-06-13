@@ -13,6 +13,7 @@ int main(int argc, char *argv[]) {
 	struct	sockaddr_in *address;
 	int 	writeSize;
 	char 	*buff,*teste;
+	char	commandBuff[11];
 	char 	addressServer[17],portServer[5];
 
 	pthread_t thread_id;
@@ -92,21 +93,14 @@ int main(int argc, char *argv[]) {
 		perror("[Client] : could not create download the file");
 		return 1;
 	}
-	pthread_t threadCommand;
-	if (pthread_create(&threadCommand, NULL, commandHandler, NULL) < 0){
-		perror("[Client] : could not create download the file");
-		return 1;
-	}
-
-	int retval,
-	    j;
 
 	while(1){
-		fgets(buff, 10, stdin);
-		if (strcmp("stop\n",buff) == 0){
-			
-			printf("je veux m'arreter\n");
-			return 0;
+		fgets(commandBuff, 10, stdin);
+		if (strcmp("stop\n",commandBuff) == 0){
+			write(ret, buff, strlen(buff));
+			shutdown(ret,2);
+			close(ret);
+			exit(EXIT_SUCCESS);
 		}	
 	}
 //*/
